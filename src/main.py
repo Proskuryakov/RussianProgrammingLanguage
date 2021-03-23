@@ -1,0 +1,16 @@
+import os
+
+from pyparsing import unicode
+
+from src.syntax.parser import RussianLanguageCodeSyntaxAnalyser
+
+
+if __name__ == '__main__':
+
+    parser = RussianLanguageCodeSyntaxAnalyser()
+
+    with open("../resources/example1", 'r', encoding='utf-8') as code:
+        file_str = unicode(code.read())
+
+    prog = parser.parse_string(file_str)
+    print(*prog.tree, sep=os.linesep)
