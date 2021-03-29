@@ -27,6 +27,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         ASSIGN_OPERATOR = pp.Literal('=')
         SEMI, COMMA = pp.Literal(';').suppress(), pp.Literal(',').suppress()
         LBRACE, RBRACE = pp.Literal("{").suppress(), pp.Literal("}").suppress()
+        LBRACK, RBRACK = pp.Literal("[").suppress(), pp.Literal("]").suppress()
 
         ADD, SUB = pp.Literal('+'), pp.Literal('-')
         MUL, DIV, MOD = pp.Literal('*'), pp.Literal('/'), pp.Literal('%')
@@ -57,9 +58,14 @@ class RussianLanguageCodeSyntaxAnalyser:
         expression = pp.Forward()
         self._register_rule_as(nameof(expression), expression)
 
+        array_identifier = rus_identifier + LBRACK + expression + RBRACK
+        self._register_rule_as(nameof(array_identifier), array_identifier)
+
+        identifier = array_identifier | rus_identifier
+
         group = (
                 literal |
-                rus_identifier |
+                identifier |
                 LPAR + expression + RPAR
         )
 
@@ -86,17 +92,29 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         expression << logical_or
 
+        expression_list = expression + pp.ZeroOrMore(COMMA + expression)
+        self._register_rule_as(nameof(expression_list), expression_list)
+
         statement_list = pp.Forward()
 
-        simple_assign = (rus_identifier + ASSIGN_OPERATOR.suppress() + expression).setName('assign')
+        simple_assign = (identifier + ASSIGN_OPERATOR.suppress() + expression).setName('assign')
         self._register_rule_as("assign", simple_assign)
 
         var_inner = simple_assign | rus_identifier
         variable_definition = type_ + var_inner + pp.ZeroOrMore(COMMA + var_inner)
         self._register_rule_as(nameof(variable_definition), variable_definition)
 
-        assign = rus_identifier + ASSIGN_OPERATOR.suppress() + expression
+        assign = identifier + ASSIGN_OPERATOR.suppress() + expression
         self._register_rule_as(nameof(assign), assign)
+
+        array_ident_allocate = rus_identifier + LBRACK + (literal | pp.Group(pp.empty)) + RBRACK
+        self._register_rule_as(nameof(array_ident_allocate), array_ident_allocate)
+
+        array_definition_in_place = type_ + array_ident_allocate + ASSIGN_OPERATOR.suppress() + LBRACE + expression_list + RBRACE
+        self._register_rule_as(nameof(array_definition_in_place), array_definition_in_place)
+
+        array_definition = type_ + array_ident_allocate
+        self._register_rule_as(nameof(array_definition), array_definition)
 
         simple_statement = assign
 
@@ -104,6 +122,7 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         statement = (
                 simple_statement + SEMI |
+                (array_definition_in_place | array_definition) + SEMI |
                 variable_definition + SEMI |
                 block
         )
@@ -151,4 +170,5 @@ class RussianLanguageCodeSyntaxAnalyser:
                 if not inspect.isabstract(cls):
                     def parse_action(s, loc, tocs):
                         return cls(*tocs)
+
                     parser.setParseAction(parse_action)

@@ -53,6 +53,20 @@ class ExpressionNode(AstNode, ABC):
     pass
 
 
+class ExpressionListNode(AstNode):
+    def __init__(self, *exprs: ExpressionNode):
+        super().__init__()
+        self.exprs = exprs
+        self.count = len(exprs)
+
+    @property
+    def childs(self) -> Tuple[ExpressionNode]:
+        return self.exprs
+
+    def __str__(self) -> str:
+        return 'Expressions'
+
+
 class StatementNode(ExpressionNode, ABC):
 
     def to_str_full(self):
@@ -60,12 +74,12 @@ class StatementNode(ExpressionNode, ABC):
 
 
 class StatementListNode(AstNode):
-    def __init__(self, *exprs: AstNode):
+    def __init__(self, *exprs: StatementNode):
         super().__init__()
         self.exprs = exprs
 
     @property
-    def childs(self) -> Tuple[AstNode]:
+    def childs(self) -> Tuple[StatementNode]:
         return self.exprs
 
     def __str__(self) -> str:
@@ -77,8 +91,12 @@ class LiteralNode(ExpressionNode):
     def __init__(self, literal: str, **props) -> None:
         super().__init__(**props)
         self.literal = literal
-        if literal in ('ЛОЖЬ', 'ИСТИНА'):
-            self.value = bool(literal)
+
+        if not str:
+            self.value = None
+            self.literal = None
+        elif literal in ('ЛОЖЬ', 'ИСТИНА'):
+            self.value = literal == 'ИСТИНА'
         else:
             self.value = eval(str(literal))
 
@@ -93,6 +111,20 @@ class RusIdentifierNode(ExpressionNode):
 
     def __str__(self) -> str:
         return str(self.name)
+
+
+class ArrayIdentifierNode(ExpressionNode):
+    def __init__(self, ident: RusIdentifierNode, index: ExpressionNode):
+        super(ArrayIdentifierNode, self).__init__()
+        self.indent = ident
+        self.index = index
+
+    def __str__(self) -> str:
+        return "Array element"
+
+    @property
+    def childs(self) -> Tuple[RusIdentifierNode, ExpressionNode]:
+        return self.indent, self.index
 
 
 class TypeNode(RusIdentifierNode):
@@ -128,6 +160,51 @@ class VariableDefinitionNode(StatementNode):
         return self._vars
 
 
+class ArrayIdentAllocateNode(AstNode):
+    def __init__(self, type_: TypeNode, size: Optional[LiteralNode], **props):
+        super(ArrayIdentAllocateNode, self).__init__(**props)
+        self.type = type_
+        self.size = size if size.value else EMPTY_LITERAL
+
+    def __str__(self) -> str:
+        return 'Array allocate info'
+
+    @property
+    def childs(self) -> Tuple[TypeNode, LiteralNode]:
+        return self.type, self.size
+
+
+class ArrayDefinitionInPlaceNode(StatementNode):
+    def __init__(self, type_: TypeNode, ident: ArrayIdentAllocateNode, values: ExpressionListNode, **props):
+        super(ArrayDefinitionInPlaceNode, self).__init__(**props)
+        self._type = type_
+        self._ident = ident
+        if not self._ident.size.value:
+            self._ident.size = LiteralNode(str(values.count))
+        self._vals = values
+
+    def __str__(self) -> str:
+        return f"Array of {self._type}"
+
+    @property
+    def childs(self) -> Tuple[TypeNode, ArrayIdentAllocateNode, ExpressionListNode]:
+        return self._type, self._ident, self._vals
+
+
+class ArrayDefinitionNode(StatementNode):
+    def __init__(self, type_: TypeNode, ident: ArrayIdentifierNode, **props):
+        super(ArrayDefinitionNode, self).__init__(**props)
+        self._type = type_
+        self._ident = ident
+
+    def __str__(self) -> str:
+        return f"Array of {self._type}"
+
+    @property
+    def childs(self) -> Tuple[TypeNode, ArrayIdentifierNode]:
+        return self._type, self._ident
+
+
 class BinaryOperationNode(ExpressionNode):
     def __init__(self, op: BinOp, arg1: ExpressionNode, arg2: ExpressionNode, **props) -> None:
         super().__init__(**props)
@@ -141,3 +218,6 @@ class BinaryOperationNode(ExpressionNode):
     @property
     def childs(self) -> Tuple[ExpressionNode, ExpressionNode]:
         return self.arg1, self.arg2
+
+
+EMPTY_LITERAL = LiteralNode(None)

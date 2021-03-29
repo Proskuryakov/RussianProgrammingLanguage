@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser = RussianLanguageCodeSyntaxAnalyser()
     print()
 
-    with open("../resources/example1", 'r', encoding='utf-8') as code:
+    with open("../resources/example2", 'r', encoding='utf-8') as code:
         file_str = unicode(code.read())
 
     prog = parser.parse_string(file_str)
