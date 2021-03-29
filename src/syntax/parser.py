@@ -38,6 +38,7 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         IF, ELSE = pp.Keyword("если"), pp.Keyword("иначе")
         WHILE = pp.Keyword('пока')
+        DO = pp.Keyword("делать")
 
         rus_alphas = u'йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ'
         rus_digits = u'0123456789'
@@ -130,12 +131,18 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         self._register_rule_as("if", if_)
 
-        while_ = WHILE.suppress() + LPAR + expression + RPAR + statement
+        while_head = WHILE.suppress() + LPAR + expression + RPAR
+
+        while_ = while_head + statement
         self._register_rule_as("while", while_)
+
+        do_while = DO.suppress() + statement + while_head
+        self._register_rule_as(nameof(do_while), do_while)
 
         statement << (
                 if_ |
                 while_ |
+                do_while |
                 simple_statement + SEMI |
                 (array_definition_in_place | array_definition) + SEMI |
                 variable_definition + SEMI |

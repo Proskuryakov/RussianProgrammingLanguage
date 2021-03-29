@@ -250,5 +250,19 @@ class WhileNode(StatementNode):
         return self.cond, self.stmt
 
 
+class DoWhileNode(StatementNode):
+    def __init__(self, stmt: StatementNode, cond: ExpressionNode, **props):
+        super(DoWhileNode, self).__init__(**props)
+        self.cond = cond
+        self.stmt = stmt
+
+    def __str__(self) -> str:
+        return str("Do-While Node")
+
+    @property
+    def childs(self) -> Tuple[StatementNode, ExpressionNode]:
+        return self.stmt, self.cond
+
+
 EMPTY_LITERAL = LiteralNode(None)
 EMPTY_NODE = StatementListNode()
