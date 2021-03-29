@@ -1,5 +1,6 @@
 import inspect
 import string
+from collections import defaultdict
 from contextlib import suppress
 
 import pyparsing as pp
@@ -13,13 +14,13 @@ b = BinOp.ADD
 
 class RussianLanguageCodeSyntaxAnalyser:
     def __init__(self):
-        self.rules = dict()
+        self.rules = defaultdict(list)
         self.start_rule = None
         self._init_rules()
         self._set_parser_action()
 
     def _register_rule_as(self, name, rule):
-        self.rules[name] = rule
+        self.rules[name].append(rule)
 
     def _init_rules(self):
         LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
@@ -102,8 +103,8 @@ class RussianLanguageCodeSyntaxAnalyser:
         self.start_rule = start
 
     def _set_parser_action(self):
-        for rule_name, rule in self.rules.items():
-            self.set_parse_action(rule_name, rule)
+        for rule_name, rules in self.rules.items():
+            [self.set_parse_action(rule_name, rule) for rule in rules]
 
     def get_parser(self):
         return self.start_rule
