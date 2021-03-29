@@ -221,7 +221,7 @@ class BinaryOperationNode(ExpressionNode):
 
 
 class IfNode(StatementNode):
-    def __init__(self, cond: ExpressionNode, if_stmt: StatementNode, else_stmt: Optional[StatementNode], **props):
+    def __init__(self, cond: ExpressionNode, if_stmt: StatementNode, else_stmt: Optional[StatementNode] = None, **props):
         super(IfNode, self).__init__(**props)
         self.cond = cond
         self.if_stmt = if_stmt
