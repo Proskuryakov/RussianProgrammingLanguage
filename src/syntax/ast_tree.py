@@ -49,7 +49,7 @@ class AstNode(ABC):
         return self.childs[index] if index < len(self.childs) else None
 
 
-class ExpressionNode(AstNode):
+class ExpressionNode(AstNode, ABC):
     pass
 
 
@@ -80,7 +80,7 @@ class LiteralNode(ExpressionNode):
         if literal in ('ЛОЖЬ', 'ИСТИНА'):
             self.value = bool(literal)
         else:
-            self.value = eval(literal)
+            self.value = eval(str(literal))
 
     def __str__(self) -> str:
         return f"LiteralNode: {self.literal}"
@@ -95,7 +95,12 @@ class RusIdentifierNode(ExpressionNode):
         return str(self.name)
 
 
-class AssignNode(StatementNode):
+class TypeNode(RusIdentifierNode):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+
+class AssignNode(ExpressionNode):
     def __init__(self, var: RusIdentifierNode, val: ExpressionNode):
         super().__init__()
         self.var = var
@@ -107,6 +112,20 @@ class AssignNode(StatementNode):
 
     def __str__(self) -> str:
         return 'Assign Node (=)'
+
+
+class VariableDefinitionNode(StatementNode):
+    def __init__(self, type_: TypeNode, *vars_: Union[RusIdentifierNode, 'AssignNode'], **props):
+        super(VariableDefinitionNode, self).__init__(**props)
+        self._type = type_
+        self._vars = vars_
+
+    def __str__(self) -> str:
+        return str(self._type)
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return self._vars
 
 
 class BinaryOperationNode(ExpressionNode):

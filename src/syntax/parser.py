@@ -26,6 +26,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
         ASSIGN_OPERATOR = pp.Literal('=')
         SEMI, COMMA = pp.Literal(';').suppress(), pp.Literal(',').suppress()
+        LBRACE, RBRACE = pp.Literal("{").suppress(), pp.Literal("}").suppress()
 
         ADD, SUB = pp.Literal('+'), pp.Literal('-')
         MUL, DIV, MOD = pp.Literal('*'), pp.Literal('/'), pp.Literal('%')
@@ -39,9 +40,7 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         rus = rus_digits + rus_alphas
 
-        # TRUE, FALSE = pp.Keyword('истина'), pp.Keyword('ложь')
-
-        number = pp.Regex('[+-]?\\d+\\.?\\d*([eE][+-]?\\d+)?')
+        number = ppc.fnumber
 
         string_ = pp.QuotedString('"', escChar='\\', unquoteResults=False, convertWhitespaceEscapes=False)
 
@@ -52,8 +51,8 @@ class RussianLanguageCodeSyntaxAnalyser:
         rus_identifier = pp.Word(rus + '_').setName("rus_identifier")
         self._register_rule_as(nameof(rus_identifier), rus_identifier)
 
-        type = rus_identifier.copy().setName("type")
-        self._register_rule_as(nameof(type), type)
+        type_ = rus_identifier.copy().setName("type")
+        self._register_rule_as("type", type_)
 
         expression = pp.Forward()
         self._register_rule_as(nameof(expression), expression)
@@ -70,13 +69,16 @@ class RussianLanguageCodeSyntaxAnalyser:
         addition = pp.Group(multiply + pp.ZeroOrMore((ADD | SUB) + multiply)).setName('binary_operation')
         self._register_rule_as("binary_operation", multiply)
 
-        compare_high_priority = pp.Group(addition + pp.Optional((GE | LE | GT | LT) + addition)).setName('binary_operation')
+        compare_high_priority = pp.Group(addition + pp.Optional((GE | LE | GT | LT) + addition)).setName(
+            'binary_operation')
         self._register_rule_as("binary_operation", addition)
 
-        compare_low_priority = pp.Group(compare_high_priority + pp.Optional((EQUALS | NEQUALS) + compare_high_priority)).setName('binary_operation')
+        compare_low_priority = pp.Group(
+            compare_high_priority + pp.Optional((EQUALS | NEQUALS) + compare_high_priority)).setName('binary_operation')
         self._register_rule_as("binary_operation", compare_low_priority)
 
-        logical_and = pp.Group(compare_low_priority + pp.ZeroOrMore(AND + compare_low_priority)).setName('binary_operation')
+        logical_and = pp.Group(compare_low_priority + pp.ZeroOrMore(AND + compare_low_priority)).setName(
+            'binary_operation')
         self._register_rule_as("binary_operation", logical_and)
 
         logical_or = pp.Group(logical_and + pp.ZeroOrMore(OR + logical_and)).setName('binary_operation')
@@ -84,22 +86,34 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         expression << logical_or
 
+        statement_list = pp.Forward()
+
+        simple_assign = (rus_identifier + ASSIGN_OPERATOR.suppress() + expression).setName('assign')
+        self._register_rule_as("assign", simple_assign)
+
+        var_inner = simple_assign | rus_identifier
+        variable_definition = type_ + var_inner + pp.ZeroOrMore(COMMA + var_inner)
+        self._register_rule_as(nameof(variable_definition), variable_definition)
+
         assign = rus_identifier + ASSIGN_OPERATOR.suppress() + expression
         self._register_rule_as(nameof(assign), assign)
 
+        simple_statement = assign
+
+        block = LBRACE + statement_list + RBRACE
+
         statement = (
-                assign + SEMI
+                simple_statement + SEMI |
+                variable_definition + SEMI |
+                block
         )
         self._register_rule_as(nameof(statement), statement)
 
-        statement_list = pp.ZeroOrMore(statement)
+        statement_list << pp.ZeroOrMore(statement + pp.ZeroOrMore(SEMI))
         self._register_rule_as(nameof(statement_list), statement_list)
 
         program = statement_list.ignore(pp.cStyleComment).ignore(pp.dblSlashComment) + pp.StringEnd()
-        self._register_rule_as(nameof(program), program)
-
         start = program
-        self._register_rule_as(nameof(start), start)
         self.start_rule = start
 
     def _set_parser_action(self):
@@ -133,8 +147,8 @@ class RussianLanguageCodeSyntaxAnalyser:
             cls = ''.join(x.capitalize() for x in rule_name.split('_')) + 'Node'
             with suppress(NameError):
                 cls = eval(cls)
+
                 if not inspect.isabstract(cls):
                     def parse_action(s, loc, tocs):
                         return cls(*tocs)
-
                     parser.setParseAction(parse_action)
