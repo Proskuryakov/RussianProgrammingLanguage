@@ -221,7 +221,8 @@ class BinaryOperationNode(ExpressionNode):
 
 
 class IfNode(StatementNode):
-    def __init__(self, cond: ExpressionNode, if_stmt: StatementNode, else_stmt: Optional[StatementNode] = None, **props):
+    def __init__(self, cond: ExpressionNode, if_stmt: StatementNode, else_stmt: Optional[StatementNode] = None,
+                 **props):
         super(IfNode, self).__init__(**props)
         self.cond = cond
         self.if_stmt = if_stmt
@@ -233,6 +234,20 @@ class IfNode(StatementNode):
     @property
     def childs(self) -> Tuple[ExpressionNode, StatementNode, StatementNode]:
         return self.cond, self.if_stmt, self.else_stmt
+
+
+class WhileNode(StatementNode):
+    def __init__(self, cond: ExpressionNode, stmt: StatementNode, **props):
+        super(WhileNode, self).__init__(**props)
+        self.cond = cond
+        self.stmt = stmt
+
+    def __str__(self) -> str:
+        return str("While Node")
+
+    @property
+    def childs(self) -> Tuple[ExpressionNode, StatementNode]:
+        return self.cond, self.stmt
 
 
 EMPTY_LITERAL = LiteralNode(None)
