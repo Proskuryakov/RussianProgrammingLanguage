@@ -36,6 +36,8 @@ class RussianLanguageCodeSyntaxAnalyser:
         GE, LE, GT, LT = pp.Literal('>='), pp.Literal('<='), pp.Literal('>'), pp.Literal('<')
         NEQUALS, EQUALS = pp.Literal('!='), pp.Literal('==')
 
+        IF, ELSE = pp.Keyword("если"), pp.Keyword("иначе")
+
         rus_alphas = u'йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ'
         rus_digits = u'0123456789'
 
@@ -120,7 +122,15 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         block = LBRACE + statement_list + RBRACE
 
-        statement = (
+        statement = pp.Forward()
+
+        if_ = IF.suppress() + LPAR + expression + RPAR + statement + pp.Optional(
+            ELSE.suppress() + statement)
+
+        self._register_rule_as("if", if_)
+
+        statement << (
+                if_ |
                 simple_statement + SEMI |
                 (array_definition_in_place | array_definition) + SEMI |
                 variable_definition + SEMI |
