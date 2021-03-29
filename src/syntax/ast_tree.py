@@ -11,7 +11,11 @@ class BinOp(Enum):
     MORE = '>'
     MORE_E = '>='
     LESS = '<'
+    LOGICAL_AND = 'И'
+    LOGICAL_OR = 'ИЛИ'
     LESS_E = '<='
+    NOT_EQ = '!='
+    EQ = '=='
 
 
 class AstNode(ABC):
@@ -38,12 +42,21 @@ class AstNode(ABC):
         func(self)
         map(func, self.childs)
 
+    def to_str(self):
+        return str(self)
+
     def __getitem__(self, index):
         return self.childs[index] if index < len(self.childs) else None
 
 
-class StatementNode(AstNode):
+class ExpressionNode(AstNode):
     pass
+
+
+class StatementNode(ExpressionNode, ABC):
+
+    def to_str_full(self):
+        return self.to_str()
 
 
 class StatementListNode(AstNode):
@@ -59,17 +72,18 @@ class StatementListNode(AstNode):
         return '...'
 
 
-class ExpressionNode(AstNode):
-    pass
+class LiteralNode(ExpressionNode):
 
-
-class NumberNode(ExpressionNode):
-    def __init__(self, num: float):
-        super().__init__()
-        self.num = float(num)
+    def __init__(self, literal: str, **props) -> None:
+        super().__init__(**props)
+        self.literal = literal
+        if literal in ('ЛОЖЬ', 'ИСТИНА'):
+            self.value = bool(literal)
+        else:
+            self.value = eval(literal)
 
     def __str__(self) -> str:
-        return str(self.num)
+        return f"LiteralNode: {self.literal}"
 
 
 class RusIdentifierNode(ExpressionNode):
@@ -92,26 +106,19 @@ class AssignNode(StatementNode):
         return self.var, self.val
 
     def __str__(self) -> str:
-        return '='
+        return 'Assign Node (=)'
 
 
-class TypeNode(RusIdentifierNode):
-    def __init__(self, name: str):
-        super().__init__(name)
+class BinaryOperationNode(ExpressionNode):
+    def __init__(self, op: BinOp, arg1: ExpressionNode, arg2: ExpressionNode, **props) -> None:
+        super().__init__(**props)
+        self.op = op
+        self.arg1 = arg1
+        self.arg2 = arg2
 
     def __str__(self) -> str:
-        return self.name
-
-
-class VariableDefenition(StatementNode):
-    def __init__(self, type: TypeNode, assign: AssignNode):
-        super(VariableDefenition, self).__init__()
-        self.type = type
-        self.assign = assign
+        return str(self.op.value)
 
     @property
-    def childs(self) -> Tuple[TypeNode, AssignNode]:
-        return self.type, self.assign
-
-    def __str__(self) -> str:
-        return 'var'
+    def childs(self) -> Tuple[ExpressionNode, ExpressionNode]:
+        return self.arg1, self.arg2
