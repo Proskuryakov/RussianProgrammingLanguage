@@ -39,6 +39,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         IF, ELSE = pp.Keyword("если"), pp.Keyword("иначе")
         WHILE = pp.Keyword('пока')
         DO = pp.Keyword("делать")
+        FOR = pp.Keyword("цикл")
 
         rus_alphas = u'йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ'
         rus_digits = u'0123456789'
@@ -120,8 +121,6 @@ class RussianLanguageCodeSyntaxAnalyser:
         array_definition = type_ + array_ident_allocate
         self._register_rule_as(nameof(array_definition), array_definition)
 
-        simple_statement = assign
-
         block = LBRACE + statement_list + RBRACE
 
         statement = pp.Forward()
@@ -139,8 +138,34 @@ class RussianLanguageCodeSyntaxAnalyser:
         do_while = DO.suppress() + statement + while_head
         self._register_rule_as(nameof(do_while), do_while)
 
+        simple_statement = assign
+
+        self._register_rule_as("statement_list", simple_statement)
+
+        for_vars0 = pp.Optional(simple_statement + pp.ZeroOrMore(COMMA + simple_statement))
+        self._register_rule_as("statement_list", for_vars0)
+
+        for_vars = variable_definition | for_vars0
+        for_cond = expression | pp.Group(pp.Empty())
+        self._register_rule_as("statement_list", for_cond)
+
+        for_step = for_vars0
+        self._register_rule_as("statement_list", for_step)
+
+        for_body = statement | pp.Group(SEMI)
+        self._register_rule_as("statement_list", for_body)
+
+        for_ = (FOR.suppress() + LPAR +
+                for_vars + SEMI +
+                for_cond + SEMI +
+                for_step + RPAR +
+                for_body)
+
+        self._register_rule_as(nameof(for_), for_)
+
         statement << (
                 if_ |
+                for_ |
                 while_ |
                 do_while |
                 simple_statement + SEMI |

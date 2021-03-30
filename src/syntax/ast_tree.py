@@ -226,7 +226,7 @@ class IfNode(StatementNode):
         super(IfNode, self).__init__(**props)
         self.cond = cond
         self.if_stmt = if_stmt
-        self.else_stmt = else_stmt if else_stmt else EMPTY_NODE
+        self.else_stmt = else_stmt if else_stmt else EMPTY_STATEMENT
 
     def __str__(self) -> str:
         return str("If-Else Node")
@@ -264,5 +264,25 @@ class DoWhileNode(StatementNode):
         return self.stmt, self.cond
 
 
+class ForNode(StatementNode):
+    """Класс для представления в AST-дереве цикла for
+    """
+
+    def __init__(self, init: Optional[StatementNode], cond: Optional[StatementNode],
+                 step: Optional[StatementNode], body: Optional[StatementNode], **props) -> None:
+        super().__init__(**props)
+        self.init = init if init else EMPTY_STATEMENT
+        self.cond = cond if cond else EMPTY_STATEMENT
+        self.step = step if step else EMPTY_STATEMENT
+        self.body = body if body else EMPTY_STATEMENT
+
+    def __str__(self) -> str:
+        return 'for'
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return self.init, self.cond, self.step, self.body
+
+
 EMPTY_LITERAL = LiteralNode(None)
-EMPTY_NODE = StatementListNode()
+EMPTY_STATEMENT = StatementListNode()
