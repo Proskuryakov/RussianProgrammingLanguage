@@ -68,8 +68,15 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         identifier = array_identifier | rus_identifier
 
+        expression_list = pp.Optional(expression + pp.ZeroOrMore(COMMA + expression))
+        self._register_rule_as(nameof(expression_list), expression_list)
+
+        call = identifier + LPAR + expression_list + RPAR
+        self._register_rule_as(nameof(call), call)
+
         group = (
                 literal |
+                call |
                 identifier |
                 LPAR + expression + RPAR
         )
@@ -96,9 +103,6 @@ class RussianLanguageCodeSyntaxAnalyser:
         self._register_rule_as("binary_operation", logical_or)
 
         expression << logical_or
-
-        expression_list = expression + pp.ZeroOrMore(COMMA + expression)
-        self._register_rule_as(nameof(expression_list), expression_list)
 
         statement_list = pp.Forward()
 
@@ -138,7 +142,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         do_while = DO.suppress() + statement + while_head
         self._register_rule_as(nameof(do_while), do_while)
 
-        simple_statement = assign
+        simple_statement = assign | call
 
         self._register_rule_as("statement_list", simple_statement)
 

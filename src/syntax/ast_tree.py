@@ -146,6 +146,21 @@ class AssignNode(ExpressionNode):
         return 'Assign Node (=)'
 
 
+class CallNode(ExpressionNode):
+    def __init__(self, func: Union[RusIdentifierNode, ArrayIdentifierNode], params: ExpressionListNode,
+                 **props) -> None:
+        super().__init__(**props)
+        self.func = func
+        self.params = params
+
+    def __str__(self) -> str:
+        return 'call'
+
+    @property
+    def childs(self) -> Tuple[ExpressionNode, ExpressionListNode]:
+        return self.func, self.params
+
+
 class VariableDefinitionNode(StatementNode):
     def __init__(self, type_: TypeNode, *vars_: Union[RusIdentifierNode, 'AssignNode'], **props):
         super(VariableDefinitionNode, self).__init__(**props)
@@ -175,13 +190,13 @@ class ArrayIdentAllocateNode(AstNode):
 
 
 class ArrayDefinitionInPlaceNode(StatementNode):
-    def __init__(self, type_: TypeNode, ident: ArrayIdentAllocateNode, values: ExpressionListNode, **props):
+    def __init__(self, type_: TypeNode, ident: ArrayIdentAllocateNode, values: ExpressionListNode = None, **props):
         super(ArrayDefinitionInPlaceNode, self).__init__(**props)
         self._type = type_
         self._ident = ident
+        self._vals = values if values else EMPTY_EXPRS
         if not self._ident.size.value:
-            self._ident.size = LiteralNode(str(values.count))
-        self._vals = values
+            self._ident.size = LiteralNode(str(self._vals.count))
 
     def __str__(self) -> str:
         return f"Array of {self._type}"
@@ -286,3 +301,4 @@ class ForNode(StatementNode):
 
 EMPTY_LITERAL = LiteralNode(None)
 EMPTY_STATEMENT = StatementListNode()
+EMPTY_EXPRS = ExpressionListNode()
