@@ -49,6 +49,21 @@ class AstNode(ABC):
         return self.childs[index] if index < len(self.childs) else None
 
 
+class _GroupNode(AstNode):
+
+    def __init__(self, name: str, *childs: AstNode, **props) -> None:
+        super().__init__(**props)
+        self.name = name
+        self._childs = childs
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return self._childs
+
+
 class ExpressionNode(AstNode, ABC):
     pass
 
@@ -297,6 +312,68 @@ class ForNode(StatementNode):
     @property
     def childs(self) -> Tuple[AstNode, ...]:
         return self.init, self.cond, self.step, self.body
+
+
+class ParamNode(StatementNode):
+    """Класс для представления в AST-дереве объявления параметра функции
+    """
+
+    def __init__(self, type_: TypeNode, name: Union[RusIdentifierNode, ArrayIdentifierNode], **props) -> None:
+        super().__init__(**props)
+        self.type = type_
+        self.name = name
+
+    def __str__(self) -> str:
+        return str(self.type)
+
+    @property
+    def childs(self) -> Tuple[AstNode]:
+        return self.name,
+
+
+class ParamListNode(StatementNode):
+    def __init__(self, *params: ParamNode, **props):
+        super(ParamListNode, self).__init__(**props)
+        self.params = params
+
+    def __str__(self) -> str:
+        return "Params"
+
+    @property
+    def childs(self) -> Tuple[ParamNode, ...]:
+        return self.params
+
+
+class FunctionDefinitionNode(StatementNode):
+    def __init__(self, type_: TypeNode, name: RusIdentifierNode, params: ParamListNode,
+                 body: StatementNode, **props):
+        super(FunctionDefinitionNode, self).__init__(**props)
+        self.type_ = type_
+        self.name = name
+        self.params = params
+        self.body = body
+
+    def __str__(self) -> str:
+        return 'Define func'
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return _GroupNode(str(self.type_), self.name), self.params, self.body
+
+
+class FunctionDeclarationNode(StatementNode):
+    def __init__(self, type_: TypeNode, name: RusIdentifierNode, params: ParamListNode, **props):
+        super(FunctionDeclarationNode, self).__init__(**props)
+        self.type_ = type_
+        self.name = name
+        self.params = params
+
+    def __str__(self) -> str:
+        return 'Declare func'
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return _GroupNode(str(self.type_), self.name), self.params
 
 
 EMPTY_LITERAL = LiteralNode(None)

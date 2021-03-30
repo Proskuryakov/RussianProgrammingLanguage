@@ -167,6 +167,18 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         self._register_rule_as(nameof(for_), for_)
 
+        param = type_ + rus_identifier
+        self._register_rule_as("param", param)
+
+        param_list = pp.Optional(param + pp.ZeroOrMore(COMMA + param))
+        self._register_rule_as(nameof(param_list), param_list)
+
+        function_declaration = type_ + rus_identifier + LPAR + param_list + RPAR
+        self._register_rule_as(nameof(function_declaration), function_declaration)
+
+        function_definition = type_ + rus_identifier + LPAR + param_list + RPAR + block
+        self._register_rule_as(nameof(function_definition), function_definition)
+
         statement << (
                 if_ |
                 for_ |
@@ -175,7 +187,10 @@ class RussianLanguageCodeSyntaxAnalyser:
                 simple_statement + SEMI |
                 (array_definition_in_place | array_definition) + SEMI |
                 variable_definition + SEMI |
-                block
+                block |
+                function_definition |
+                function_declaration + SEMI
+
         )
         self._register_rule_as(nameof(statement), statement)
 
