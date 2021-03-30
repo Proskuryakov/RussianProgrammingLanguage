@@ -40,6 +40,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         WHILE = pp.Keyword('пока')
         DO = pp.Keyword("делать")
         FOR = pp.Keyword("цикл")
+        RETURN = pp.Keyword("вернуть")
 
         rus_alphas = u'йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ'
         rus_digits = u'0123456789'
@@ -179,11 +180,15 @@ class RussianLanguageCodeSyntaxAnalyser:
         function_definition = type_ + rus_identifier + LPAR + param_list + RPAR + block
         self._register_rule_as(nameof(function_definition), function_definition)
 
+        return_ = RETURN.suppress() + expression
+        self._register_rule_as(nameof(return_), return_)
+
         statement << (
                 if_ |
                 for_ |
                 while_ |
                 do_while |
+                return_ + SEMI |
                 simple_statement + SEMI |
                 (array_definition_in_place | array_definition) + SEMI |
                 variable_definition + SEMI |

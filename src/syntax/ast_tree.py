@@ -376,6 +376,19 @@ class FunctionDeclarationNode(StatementNode):
         return _GroupNode(str(self.type_), self.name), self.params
 
 
+class ReturnNode(StatementNode):
+    def __init__(self, expr: ExpressionNode, **props):
+        super(ReturnNode, self).__init__(**props)
+        self.expr = expr
+
+    def __str__(self) -> str:
+        return 'Return'
+
+    @property
+    def childs(self) -> Tuple[ExpressionNode]:
+        return self.expr,
+
+
 EMPTY_LITERAL = LiteralNode(None)
 EMPTY_STATEMENT = StatementListNode()
 EMPTY_EXPRS = ExpressionListNode()
