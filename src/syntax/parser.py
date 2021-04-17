@@ -145,14 +145,14 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         simple_statement = assign | call
 
-        self._register_rule_as("statement_list", simple_statement)
+        self._register_rule_as("statement", simple_statement)
 
         for_vars0 = pp.Optional(simple_statement + pp.ZeroOrMore(COMMA + simple_statement))
         self._register_rule_as("statement_list", for_vars0)
 
         for_vars = variable_definition | for_vars0
         for_cond = expression | pp.Group(pp.Empty())
-        self._register_rule_as("statement_list", for_cond)
+        self._register_rule_as("statement", for_cond)
 
         for_step = for_vars0
         self._register_rule_as("statement_list", for_step)
@@ -202,7 +202,7 @@ class RussianLanguageCodeSyntaxAnalyser:
         statement_list << pp.ZeroOrMore(statement + pp.ZeroOrMore(SEMI))
         self._register_rule_as(nameof(statement_list), statement_list)
 
-        program = statement_list.ignore(pp.cStyleComment).ignore(pp.dblSlashComment) + pp.StringEnd()
+        program = statement_list.ignore(pp.pythonStyleComment).ignore(pp.cStyleComment) + pp.StringEnd()
         start = program
         self.start_rule = start
 
