@@ -213,8 +213,33 @@ class RussianLanguageCodeSyntaxAnalyser:
     def get_parser(self):
         return self.start_rule
 
-    def parse_string(self, string) -> StatementListNode:
-        return self.get_parser().parseString(string)[0]
+    def parse_string(self, prog) -> StatementListNode:
+        locs = []
+        row, col = 0, 0
+        for ch in prog:
+            if ch == '\n':
+                row += 1
+                col = 0
+            elif ch == '\r':
+                pass
+            else:
+                col += 1
+            locs.append((row, col))
+        old_init_action = AstNode.init_action
+
+        def init_action(node: AstNode) -> None:
+            loc = getattr(node, 'loc', None)
+            if isinstance(loc, int):
+                node.row = locs[loc][0] + 1
+                node.col = locs[loc][1] + 1
+
+        AstNode.init_action = init_action
+        try:
+            prog: StatementListNode = self.get_parser().parseString(str(prog))[0]
+            prog.program = True
+            return prog
+        finally:
+            AstNode.init_action = old_init_action
 
     @staticmethod
     def set_parse_action(rule_name: str, parser: pp.ParserElement) -> None:
@@ -240,6 +265,6 @@ class RussianLanguageCodeSyntaxAnalyser:
 
                 if not inspect.isabstract(cls):
                     def parse_action(s, loc, tocs):
-                        return cls(*tocs)
+                        return cls(*tocs, loc=loc)
 
                     parser.setParseAction(parse_action)

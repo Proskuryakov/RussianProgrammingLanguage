@@ -19,6 +19,18 @@ class BinOp(Enum):
 
 
 class AstNode(ABC):
+
+    init_action: Callable[['AstNode'], None] = None
+
+    def __init__(self, **props) -> None:
+        super().__init__()
+        self.row = None
+        self.col = None
+        for k, v in props.items():
+            setattr(self, k, v)
+        if AstNode.init_action is not None:
+            AstNode.init_action(self)
+
     @property
     def childs(self) -> Tuple['AstNode', ...]:
         return ()
@@ -69,8 +81,8 @@ class ExpressionNode(AstNode, ABC):
 
 
 class ExpressionListNode(AstNode):
-    def __init__(self, *exprs: ExpressionNode):
-        super().__init__()
+    def __init__(self, *exprs: ExpressionNode, **props) -> None:
+        super().__init__(**props)
         self.exprs = exprs
         self.count = len(exprs)
 
@@ -89,8 +101,8 @@ class StatementNode(ExpressionNode, ABC):
 
 
 class StatementListNode(AstNode):
-    def __init__(self, *exprs: StatementNode):
-        super().__init__()
+    def __init__(self, *exprs: StatementNode, **props) -> None:
+        super().__init__(**props)
         self.exprs = exprs
 
     @property
@@ -116,12 +128,12 @@ class LiteralNode(ExpressionNode):
             self.value = eval(str(literal))
 
     def __str__(self) -> str:
-        return f"LiteralNode: {self.literal}"
+        return f"LiteralNode: {self.literal} (row {self.row} col {self.col})"
 
 
 class RusIdentifierNode(ExpressionNode):
-    def __init__(self, name: str):
-        super().__init__()
+    def __init__(self, name: str, **props) -> None:
+        super().__init__(**props)
         self.name = str(name)
 
     def __str__(self) -> str:
@@ -129,8 +141,8 @@ class RusIdentifierNode(ExpressionNode):
 
 
 class ArrayIdentifierNode(ExpressionNode):
-    def __init__(self, ident: RusIdentifierNode, index: ExpressionNode):
-        super(ArrayIdentifierNode, self).__init__()
+    def __init__(self, ident: RusIdentifierNode, index: ExpressionNode, **props) -> None:
+        super().__init__(**props)
         self.indent = ident
         self.index = index
 
@@ -143,13 +155,13 @@ class ArrayIdentifierNode(ExpressionNode):
 
 
 class TypeNode(RusIdentifierNode):
-    def __init__(self, name: str):
-        super().__init__(name)
+    def __init__(self, name: str, **props) -> None:
+        super().__init__(name, **props)
 
 
 class AssignNode(ExpressionNode):
-    def __init__(self, var: RusIdentifierNode, val: ExpressionNode):
-        super().__init__()
+    def __init__(self, var: RusIdentifierNode, val: ExpressionNode, **props) -> None:
+        super().__init__(**props)
         self.var = var
         self.val = val
 
