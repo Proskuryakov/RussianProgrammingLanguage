@@ -1,21 +1,11 @@
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
 
-
-class BinOp(Enum):
-    ADD = '+'
-    SUB = '-'
-    MUL = '*'
-    DIV = '/'
-    MORE = '>'
-    MORE_E = '>='
-    LESS = '<'
-    LOGICAL_AND = 'И'
-    LOGICAL_OR = 'ИЛИ'
-    LESS_E = '<='
-    NOT_EQ = '!='
-    EQ = '=='
+from src.semantic.exception import SemanticException
+from src.semantic.types import TypeDesc, UNDEFINED_TYPE
+from src.syntax.types import BinOp
 
 
 class AstNode(ABC):
@@ -30,6 +20,8 @@ class AstNode(ABC):
             setattr(self, k, v)
         if AstNode.init_action is not None:
             AstNode.init_action(self)
+        self.node_type = None
+        self.node_ident = None
 
     @property
     def childs(self) -> Tuple['AstNode', ...]:
@@ -104,6 +96,7 @@ class StatementListNode(AstNode):
     def __init__(self, *exprs: StatementNode, **props) -> None:
         super().__init__(**props)
         self.exprs = exprs
+        self.program = False
 
     @property
     def childs(self) -> Tuple[StatementNode]:
@@ -157,6 +150,9 @@ class ArrayIdentifierNode(ExpressionNode):
 class TypeNode(RusIdentifierNode):
     def __init__(self, name: str, **props) -> None:
         super().__init__(name, **props)
+        self.type = UNDEFINED_TYPE
+        with suppress(SemanticException):
+            self.type = TypeDesc.from_str(name)
 
 
 class AssignNode(ExpressionNode):

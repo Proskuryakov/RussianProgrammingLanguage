@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, Tuple
 
 from src.semantic.scopes import SemanticException
-from src.syntax.ast_tree import BinOp
+from src.syntax.types import BinOp
 
 
 class BaseType(Enum):
@@ -114,47 +114,35 @@ BIN_OP_TYPE_COMPATIBILITY = {
         (INT, INT): INT,
         (FLOAT, FLOAT): FLOAT
     },
-    BinOp.MOD: {
-        (INT, INT): INT,
-        (FLOAT, FLOAT): FLOAT
-    },
-
-    BinOp.GT: {
+    BinOp.MORE: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
     },
-    BinOp.LT: {
+    BinOp.LESS: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
     },
-    BinOp.GE: {
+    BinOp.MORE_E: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
     },
-    BinOp.LE: {
+    BinOp.LESS_E: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
     },
-    BinOp.EQUALS: {
+    BinOp.EQ: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
     },
-    BinOp.NEQUALS: {
+    BinOp.NOT_EQ: {
         (INT, INT): BOOL,
         (FLOAT, FLOAT): BOOL,
         (STR, STR): BOOL,
-    },
-
-    BinOp.BIT_AND: {
-        (INT, INT): INT
-    },
-    BinOp.BIT_OR: {
-        (INT, INT): INT
     },
 
     BinOp.LOGICAL_AND: {
@@ -164,3 +152,5 @@ BIN_OP_TYPE_COMPATIBILITY = {
         (BOOL, BOOL): BOOL
     },
 }
+
+UNDEFINED_TYPE = TypeDesc()
