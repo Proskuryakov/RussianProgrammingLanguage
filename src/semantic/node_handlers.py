@@ -1,13 +1,14 @@
 from src.semantic.exception import SemanticException
 from src.semantic.scopes import IdentScope
 from src.semantic.scopes_include import IdentDesc
-from src.semantic.types import TypeDesc
+from src.semantic.types import TypeDesc, is_correct_type
 from src.syntax.ast_tree import *
 
 
 class AstNodeSemanticHandler:
     def __init__(self, node_type: type):
         self.node_type = node_type
+        self.semantic_checker = None
 
     def check_node_type(self, node):
         return self.node_type == type(node)
@@ -29,8 +30,8 @@ class AssignNodeHandler(AstNodeSemanticHandler):
         super().__init__(AssignNode)
 
     def check_semantic(self, node, scope: IdentScope, *vals, **props):
-        GLOBAL_ANALYSER.process_node(node.var, scope)
-        GLOBAL_ANALYSER.process_node(node.val, scope)
+        self.semantic_checker.process_node(node.var, scope)
+        self.semantic_checker.process_node(node.val, scope)
         # self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
         self.node_type = node.var.node_type
 
@@ -64,7 +65,7 @@ class TypeNodeNodeHandler(AstNodeSemanticHandler):
         super().__init__(TypeNode)
 
     def check_semantic(self, node: TypeNode, scope: IdentScope, *vals, **props):
-        if node.name is None:
+        if node.name is None or not is_correct_type(node.name):
             raise SemanticException('Неизвестный тип {}'.format(node.name), node.row, node.col)
 
 
@@ -91,14 +92,14 @@ class VariableDefinitionNodeHandler(AstNodeSemanticHandler):
         super().__init__(VariableDefinitionNode)
 
     def check_semantic(self, node: VariableDefinitionNode, scope: IdentScope, *vals, **props):
-        GLOBAL_ANALYSER.process_node(node._type, scope)
+        self.semantic_checker.process_node(node._type, scope)
         for var in node._vars:
             var_node: RusIdentifierNode = var.var if isinstance(var, AssignNode) else var
             try:
                 scope.add_ident(IdentDesc(var_node.name, node._type.type))
             except SemanticException as e:
                 raise SemanticException(e.message, var_node.row, var_node.col)
-            GLOBAL_ANALYSER.process_node(var, scope)
+            self.semantic_checker.process_node(var, scope)
         node.node_type = TypeDesc.VOID
 
 
@@ -117,6 +118,7 @@ class RussianLanguageSemanticAnalyser:
 
     def register_handler(self, handler: AstNodeSemanticHandler):
         self.handlers_dict[handler.node_type] = handler
+        handler.semantic_checker = self
 
     def process_node(self, node, scope: IdentScope):
         self.handlers_dict.get(type(node), DefaultHandler()).check_semantic(node, scope)

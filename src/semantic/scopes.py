@@ -6,7 +6,6 @@ from src.semantic.scopes_include import IdentDesc, ScopeType
 from src.semantic.types import TypeDesc
 
 
-
 class IdentScope:
     """Класс для представлений областей видимости переменных во время семантического анализа
     """

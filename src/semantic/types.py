@@ -89,6 +89,15 @@ TYPE_CONVERTIBILITY = {
     BOOL: (STR,)
 }
 
+types_collection = [VOID, INT, FLOAT, BOOL, STR ]
+
+
+def is_correct_type(type_name: str) -> bool:
+    try:
+        return BaseType(type_name) in types_collection
+    except ValueError:
+        return False
+
 
 def can_type_convert_to(from_type: TypeDesc, to_type: TypeDesc) -> bool:
     if not from_type.is_simple or not to_type.is_simple:
