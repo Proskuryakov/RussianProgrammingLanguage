@@ -25,6 +25,7 @@ class IdentDesc:
         self.type = type_
         self.scope = scope
         self.index = index
+        self.is_array = False
         self.built_in = False
 
     def __str__(self) -> str:

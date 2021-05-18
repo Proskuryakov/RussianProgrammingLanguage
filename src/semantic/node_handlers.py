@@ -63,6 +63,19 @@ class RusIdentifierNodeHandler(AstNodeSemanticHandler):
         node.node_ident = ident
 
 
+class ArrayIdentifierNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ArrayIdentifierNode)
+
+    def check_semantic(self, node: ArrayIdentifierNode, scope: IdentScope, *vals, **props):
+        ident = scope.get_ident(node.indent.name)
+        if ident is None:
+            raise SemanticException(f'Идентификатор \'{node.indent.name}\' не найден', node.row, node.col)
+        node.node_type = ident.type
+        node.index = type_convert(node.index, TypeDesc.INT, 'индекс')
+        node.node_ident = ident
+
+
 class TypeNodeNodeHandler(AstNodeSemanticHandler):
     def __init__(self):
         super().__init__(TypeNode)
@@ -88,6 +101,16 @@ class LiteralNodeHandler(AstNodeSemanticHandler):
             node.node_type = TypeDesc.STR
         else:
             raise SemanticException(f'Неизвестный тип {type(node.value)} для {node.value}', node.row, node.col)
+
+class ArrayIdentAllocateNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ArrayIdentAllocateNode)
+
+    def check_semantic(self, node: ArrayIdentAllocateNode, scope: IdentScope, *vals, **props):
+        try:
+            scope.add_ident(IdentDesc(node.е, node._type.type))
+        except SemanticException as e:
+            raise SemanticException(e.message, var_node.row, var_node.col)
 
 
 class VariableDefinitionNodeHandler(AstNodeSemanticHandler):
@@ -300,8 +323,8 @@ class RussianLanguageSemanticAnalyser:
         self.handlers_dict[handler.node_type] = handler
         handler.semantic_checker = self
 
-    def process_node(self, node, scope: IdentScope):
-        self.handlers_dict.get(type(node), DefaultHandler()).check_semantic(node, scope)
+    def process_node(self, node, scope: IdentScope, *vals, **props):
+        self.handlers_dict.get(type(node), DefaultHandler()).check_semantic(node, scope, *vals, **props)
 
 
 GLOBAL_ANALYSER = RussianLanguageSemanticAnalyser()
