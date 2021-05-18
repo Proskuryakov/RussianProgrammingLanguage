@@ -201,8 +201,9 @@ class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
 
     def check_semantic(self, node: FunctionDefinitionNode, scope: IdentScope, *vals, **props):
         if scope.curr_func:
-            raise SemanticException("Объявление функции ({}) внутри другой функции не поддерживается".format(node.name.name),
-                              node.row, node.col)
+            raise SemanticException(
+                "Объявление функции ({}) внутри другой функции не поддерживается".format(node.name.name),
+                node.row, node.col)
         parent_scope = scope
         self.semantic_checker.process_node(node.type_, scope)
         scope = IdentScope(scope)
@@ -248,6 +249,35 @@ class ParamListNodeHandler(AstNodeSemanticHandler):
     def check_semantic(self, node: ParamListNode, scope: IdentScope, *vals, **props):
         for param in node.params:
             self.semantic_checker.process_node(param, scope)
+
+
+class ForNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ForNode)
+
+    def check_semantic(self, node, scope: IdentScope, *vals, **props):
+        scope = IdentScope(scope)
+        self.semantic_checker.process_node(node.init, scope)
+        if node.cond == EMPTY_STATEMENT:
+            node.cond = LiteralNode('ИСТИНА')
+        self.semantic_checker.process_node(node.cond, scope)
+        node.cond = type_convert(node.cond, TypeDesc.BOOL, 'условие')
+        self.semantic_checker.process_node(node.step, scope)
+        self.semantic_checker.process_node(node.body, scope)
+        node.node_type = TypeDesc.VOID
+
+
+class WhileNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(WhileNode)
+
+    def check_semantic(self, node: WhileNode, scope: IdentScope, *vals, **props):
+        self.semantic_checker.process_node(node.cond, scope)
+        node.cond = type_convert(node.cond, TypeDesc.BOOL, 'условие')
+        self.semantic_checker.process_node(node.stmt, IdentScope(scope))
+        node.node_type = TypeDesc.VOID
+
+
 ###############################################################################################################
 
 classes = []
