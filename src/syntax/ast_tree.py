@@ -4,12 +4,11 @@ from typing import Callable, Tuple, Optional, Union
 from enum import Enum
 
 from src.semantic.exception import SemanticException
-from src.semantic.types import TypeDesc, UNDEFINED_TYPE
+from src.semantic.types import TypeDesc, UNDEFINED_TYPE, TYPE_CONVERTIBILITY
 from src.syntax.types import BinOp
 
 
 class AstNode(ABC):
-
     init_action: Callable[['AstNode'], None] = None
 
     def __init__(self, **props) -> None:
@@ -112,13 +111,17 @@ class LiteralNode(ExpressionNode):
         super().__init__(**props)
         self.literal = literal
 
-        if not str:
+        if not literal:
             self.value = None
             self.literal = None
         elif literal in ('ЛОЖЬ', 'ИСТИНА'):
             self.value = literal == 'ИСТИНА'
         else:
-            self.value = eval(str(literal))
+            self.value = literal
+            try:
+                self.value = eval(literal)
+            except TypeError:
+                pass
 
     def __str__(self) -> str:
         return f"LiteralNode: {self.literal} (row {self.row} col {self.col})"
@@ -395,6 +398,39 @@ class ReturnNode(StatementNode):
     @property
     def childs(self) -> Tuple[ExpressionNode]:
         return self.expr,
+
+
+class TypeConvertNode(ExpressionNode):
+    """Класс для представления в AST-дереве операций конвертации типов данных
+       (в языке программирования может быть как expression, так и statement)
+    """
+
+    def __init__(self, expr: ExpressionNode, type_: TypeDesc, **props) -> None:
+        super().__init__(**props)
+        self.expr = expr
+        self.type = type_
+        self.node_type = type_
+
+    def __str__(self) -> str:
+        return 'convert'
+
+    @property
+    def childs(self) -> Tuple[AstNode, ...]:
+        return (_GroupNode(str(self.type), self.expr),)
+
+
+def type_convert(expr: ExpressionNode, type_: TypeDesc, comment: Optional[str] = None) -> ExpressionNode:
+    if expr.node_type is None:
+        raise SemanticException('type of expression can\'t be resolved')
+    if expr.node_type == type_:
+        return expr
+    if (expr.node_type.is_simple and type_.is_simple and
+            expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY[
+        expr.node_type.base_type]):
+        return TypeConvertNode(expr, type_)
+    else:
+        raise SemanticException('Тип {0}{2} не конвертируется в {1}'.format(
+            expr.node_type, type_, ' ({})'.format(comment) if comment else ''))
 
 
 EMPTY_LITERAL = LiteralNode(None)

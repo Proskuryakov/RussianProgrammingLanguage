@@ -47,7 +47,7 @@ class RussianLanguageCodeSyntaxAnalyser:
 
         rus = rus_digits + rus_alphas
 
-        number = ppc.fnumber
+        number = pp.Regex('[+-]?\\d+\\.?\\d*([eE][+-]?\\d+)?')
 
         string_ = pp.QuotedString('"', escChar='\\', unquoteResults=False, convertWhitespaceEscapes=False)
 

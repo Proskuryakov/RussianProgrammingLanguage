@@ -32,7 +32,7 @@ class AssignNodeHandler(AstNodeSemanticHandler):
     def check_semantic(self, node, scope: IdentScope, *vals, **props):
         self.semantic_checker.process_node(node.var, scope)
         self.semantic_checker.process_node(node.val, scope)
-        # self.val = type_convert(self.val, self.var.node_type, self, 'присваиваемое значение')
+        node.val = type_convert(node.val, node.var.node_type, 'присваиваемое значение')
         self.node_type = node.var.node_type
 
 
