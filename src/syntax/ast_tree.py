@@ -84,6 +84,9 @@ class ExpressionListNode(AstNode):
     def __str__(self) -> str:
         return 'Expressions'
 
+    def __len__(self):
+        return len(self.exprs)
+
 
 class StatementNode(ExpressionNode, ABC):
 
@@ -349,6 +352,9 @@ class ParamListNode(StatementNode):
 
     def __str__(self) -> str:
         return "Params"
+
+    def __len__(self):
+        return len(self.params)
 
     @property
     def childs(self) -> Tuple[ParamNode, ...]:

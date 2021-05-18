@@ -30,3 +30,5 @@ class IdentDesc:
     def __str__(self) -> str:
         return '{}, {}, {}'.format(self.type, self.scope, 'built-in' if self.built_in else self.index)
 
+
+EMPTY_IDENT = IdentDesc('', TypeDesc.VOID)

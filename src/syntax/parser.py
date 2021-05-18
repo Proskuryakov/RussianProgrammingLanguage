@@ -268,3 +268,6 @@ class RussianLanguageCodeSyntaxAnalyser:
                         return cls(*tocs, loc=loc)
 
                     parser.setParseAction(parse_action)
+
+
+global_parser = RussianLanguageCodeSyntaxAnalyser()

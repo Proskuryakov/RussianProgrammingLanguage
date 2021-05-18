@@ -79,8 +79,16 @@ class IdentScope:
             scope = scope.parent
         return ident
 
+BUILT_IN_OBJECTS = '''
+    пустота вывод(строка стр){}
+'''
 
-def prepare_global_scope() -> IdentScope:
+def prepare_global_scope(semantic_check) -> IdentScope:
+    from src.syntax.parser import global_parser
+    prog = global_parser.parse_string(BUILT_IN_OBJECTS)
     scope = IdentScope()
+    semantic_check.process_node(prog, scope)
+    for name, ident in scope.idents.items():
+        ident.built_in = True
     scope.var_index = 0
     return scope

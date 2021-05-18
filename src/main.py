@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     print('semantic_check:')
     try:
-        scope = scopes.prepare_global_scope()
+        scope = scopes.prepare_global_scope(semantic_analyser)
         semantic_analyser.process_node(prog, scope)
         print(*prog.tree, sep=os.linesep)
     except SemanticException as e:
