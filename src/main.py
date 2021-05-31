@@ -24,6 +24,12 @@ if __name__ == '__main__':
     try:
         scope = scopes.prepare_global_scope(semantic_analyser)
         semantic_analyser.process_node(prog, scope)
+
+        main = scope.get_ident("главный")
+
+        if not main or not main.type.func:
+            raise SemanticException("Нет точки входа в программу (функция главный)")
+
         print(*prog.tree, sep=os.linesep)
     except SemanticException as e:
         print('Ошибка: {}'.format(e.message))

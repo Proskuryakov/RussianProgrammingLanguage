@@ -149,6 +149,11 @@ class ArrayIdentifierNode(ExpressionNode):
         return "Array element"
 
     @property
+
+    def name(self):
+        return self.indent.name
+
+    @property
     def childs(self) -> Tuple[RusIdentifierNode, ExpressionNode]:
         return self.indent, self.index
 
