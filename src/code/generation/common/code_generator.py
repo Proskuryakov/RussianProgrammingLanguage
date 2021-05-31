@@ -24,7 +24,7 @@ class RussianLanguageCodeGenerator:
         self.handlers = dict()
 
     def register_code_generator(self, gen: NodeCodeGenerator):
-        self.handlers[type(gen)] = gen
+        self.handlers[gen.node_type] = gen
         gen.code_generator = self
 
     def gen_code_for_node(self, node, scope: IdentScope, *args, **kwargs):
