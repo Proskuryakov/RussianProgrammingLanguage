@@ -37,7 +37,7 @@ class AssignNodeHandler(AstNodeSemanticHandler):
         self.semantic_checker.process_node(node.var, scope)
         try:
             node.val = LiteralNode(str(self.semantic_checker.try_calc_node(node.val, scope)))
-        except SemanticException:
+        except Exception:
             pass
         self.semantic_checker.process_node(node.val, scope)
         node.val = type_convert(node.val, node.var.node_type, 'присваиваемое значение')
@@ -76,6 +76,20 @@ class ArrayIdentifierNodeHandler(AstNodeSemanticHandler):
         ident = scope.get_ident(node.indent.name)
         if ident is None:
             raise SemanticException(f'Идентификатор \'{node.indent.name}\' не найден', node.row, node.col)
+        if not ident.is_array:
+            raise SemanticException(f'Идентификатор \'{node.indent.name}\' не является массивом', node.row, node.col)
+
+        if isinstance(node.index, ExpressionNode):
+            try:
+                value = self.semantic_checker.try_calc_node(node.index, scope)
+                node.index = LiteralNode(str(value))
+            except Exception:
+                pass
+        self.semantic_checker.process_node(node.index, scope)
+
+        if isinstance(node.index, LiteralNode) and node.index.value < 0:
+            raise SemanticException(f'Взятие по отрицательному индексу', node.row, node.col)
+
         node.node_type = ident.type
         node.index = type_convert(node.index, TypeDesc.INT, 'индекс')
         node.node_ident = ident
@@ -118,12 +132,21 @@ class ArrayDefinitionInPlaceNodeHandler(AstNodeSemanticHandler):
             raise SemanticException(f'Идентификатор \'{node._ident.name}\' не найден', node.row, node.col)
 
         if isinstance(node._size, ExpressionNode):
-            value = self.semantic_checker.try_calc_node(node._size, scope)
-            node._size = LiteralNode(str(value))
+            try:
+                value = self.semantic_checker.try_calc_node(node._size, scope)
+                node._size = LiteralNode(str(value))
+            except Exception:
+                raise SemanticException("Не удалось вычислить значение выражения", node.row, node.col)
 
         self.semantic_checker.process_node(node._size, scope)
-
+        if node._size.node_type != TypeDesc.INT or node._size.value < 0:
+            raise SemanticException(f'Размер массива должен быть целым неотрицательным числом', node.row, node.col)
         self.semantic_checker.process_node(node._vals, scope)
+
+        if node._size.value < len(node._vals):
+            raise SemanticException(f'Размер массива [{node._size.value}] '
+                                    f'меньше, чем количество элементов в инициализаторе '
+                                    f'[{len(node._vals)}]', node.row, node.col)
 
         node.node_type = ident.type
         ident.is_array = True
@@ -140,8 +163,11 @@ class ArrayDefinitionNodeHandler(AstNodeSemanticHandler):
             raise SemanticException(f'Идентификатор \'{node._ident.name}\' не найден', node.row, node.col)
 
         if isinstance(node._size, ExpressionNode):
-            value = self.semantic_checker.try_calc_node(node._size, scope)
-            node._size = LiteralNode(str(value))
+            try:
+                value = self.semantic_checker.try_calc_node(node._size, scope)
+                node._size = LiteralNode(str(value))
+            except Exception:
+                raise SemanticException("Не удалось вычислить значение выражения", node.row, node.col)
 
         self.semantic_checker.process_node(node._size, scope)
         node.node_type = ident.type
@@ -373,7 +399,10 @@ class RussianLanguageSemanticAnalyser:
         self.handlers_dict.get(type(node), DefaultHandler()).check_semantic(node, scope, *vals, **props)
 
     def try_calc_node(self, node, scope: IdentScope, *vals, **props):
-        return self.node_calc.process_node(node, scope, vals, props)
+        try:
+            return self.node_calc.process_node(node, scope, vals, props)
+        except Exception as e:
+            raise e
 
 
 GLOBAL_ANALYSER = RussianLanguageSemanticAnalyser()

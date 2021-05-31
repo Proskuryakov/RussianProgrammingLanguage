@@ -330,9 +330,10 @@ class ParamNode(StatementNode):
         super().__init__(**props)
         self.type = type_
         self.name = name
+        self.index = 0
 
     def __str__(self) -> str:
-        return str(self.type)
+        return f"Type {self.type}, index {self.index}"
 
     @property
     def childs(self) -> Tuple[AstNode]:
@@ -343,6 +344,8 @@ class ParamListNode(StatementNode):
     def __init__(self, *params: ParamNode, **props):
         super(ParamListNode, self).__init__(**props)
         self.params = params
+        for i in range(len(self.params)):
+            self.params[i].index = i
 
     def __str__(self) -> str:
         return "Params"

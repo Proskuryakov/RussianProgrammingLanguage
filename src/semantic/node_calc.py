@@ -23,7 +23,7 @@ class DefaultCalc(NodeCalc):
         super().__init__(type(None))
 
     def try_calc(self, node, scope: IdentScope, *vals, **props):
-        raise Exception(f"No founded calc for node type {type(node)}")
+        raise TypeError(f"No founded calc for node type {type(node)}")
 
 
 class LiteralNodeCalc(NodeCalc):
@@ -75,7 +75,10 @@ class RussianLanguageNodeCalculator:
         handler.node_calculator = self
 
     def process_node(self, node, scope: IdentScope, *vals, **props):
-        return self.handlers_dict.get(type(node), DefaultCalc()).try_calc(node, scope, *vals, **props)
+        try:
+            return self.handlers_dict.get(type(node), DefaultCalc()).try_calc(node, scope, *vals, **props)
+        except Exception as e:
+            raise e
 
 
 GLOBAL_NODE_CALC = RussianLanguageNodeCalculator()
