@@ -2,6 +2,7 @@ import inspect
 import sys
 
 from src.semantic.exception import SemanticException
+from src.semantic.node_calc import GLOBAL_NODE_CALC
 from src.semantic.scopes import IdentScope
 from src.semantic.scopes_include import IdentDesc, EMPTY_IDENT, ScopeType
 from src.semantic.types import TypeDesc, is_correct_type, BIN_OP_TYPE_COMPATIBILITY
@@ -34,6 +35,10 @@ class AssignNodeHandler(AstNodeSemanticHandler):
 
     def check_semantic(self, node, scope: IdentScope, *vals, **props):
         self.semantic_checker.process_node(node.var, scope)
+        try:
+            node.val = LiteralNode(str(self.semantic_checker.try_calc_node(node.val, scope)))
+        except SemanticException:
+            pass
         self.semantic_checker.process_node(node.val, scope)
         node.val = type_convert(node.val, node.var.node_type, 'присваиваемое значение')
         self.node_type = node.var.node_type
@@ -102,15 +107,46 @@ class LiteralNodeHandler(AstNodeSemanticHandler):
         else:
             raise SemanticException(f'Неизвестный тип {type(node.value)} для {node.value}', node.row, node.col)
 
-class ArrayIdentAllocateNodeHandler(AstNodeSemanticHandler):
-    def __init__(self):
-        super().__init__(ArrayIdentAllocateNode)
 
-    def check_semantic(self, node: ArrayIdentAllocateNode, scope: IdentScope, *vals, **props):
-        try:
-            scope.add_ident(IdentDesc(node.е, node._type.type))
-        except SemanticException as e:
-            raise SemanticException(e.message, var_node.row, var_node.col)
+class ArrayDefinitionInPlaceNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ArrayDefinitionInPlaceNode)
+
+    def check_semantic(self, node: ArrayDefinitionInPlaceNode, scope: IdentScope, *vals, **props):
+        ident = scope.get_ident(node._ident.name)
+        if ident is None:
+            raise SemanticException(f'Идентификатор \'{node._ident.name}\' не найден', node.row, node.col)
+
+        if isinstance(node._size, ExpressionNode):
+            value = self.semantic_checker.try_calc_node(node._size, scope)
+            node._size = LiteralNode(str(value))
+
+        self.semantic_checker.process_node(node._size, scope)
+
+        self.semantic_checker.process_node(node._vals, scope)
+
+        node.node_type = ident.type
+        ident.is_array = True
+        node.node_ident = ident
+
+
+class ArrayDefinitionNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ArrayDefinitionNode)
+
+    def check_semantic(self, node: ArrayDefinitionNode, scope: IdentScope, *vals, **props):
+        ident = scope.get_ident(node._ident.name)
+        if ident is None:
+            raise SemanticException(f'Идентификатор \'{node._ident.name}\' не найден', node.row, node.col)
+
+        if isinstance(node._size, ExpressionNode):
+            value = self.semantic_checker.try_calc_node(node._size, scope)
+            node._size = LiteralNode(str(value))
+
+        self.semantic_checker.process_node(node._size, scope)
+        node.node_type = ident.type
+        ident.is_array = True
+        node.node_ident = ident
 
 
 class VariableDefinitionNodeHandler(AstNodeSemanticHandler):
@@ -218,6 +254,15 @@ class CallNodeHandler(AstNodeSemanticHandler):
             node.node_type = func.type.return_type
 
 
+class ExpressionNodeListHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super().__init__(ExpressionListNode)
+
+    def check_semantic(self, node: ExpressionListNode, scope: IdentScope, *vals, **props):
+        for item in node.exprs:
+            self.semantic_checker.process_node(item, scope)
+
+
 class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
     def __init__(self):
         super().__init__(FunctionDefinitionNode)
@@ -314,6 +359,7 @@ class RussianLanguageSemanticAnalyser:
     def __init__(self):
         self.handlers_dict = dict()
         self.init_analyser()
+        self.node_calc = GLOBAL_NODE_CALC
 
     def init_analyser(self):
         for cls in classes:
@@ -325,6 +371,9 @@ class RussianLanguageSemanticAnalyser:
 
     def process_node(self, node, scope: IdentScope, *vals, **props):
         self.handlers_dict.get(type(node), DefaultHandler()).check_semantic(node, scope, *vals, **props)
+
+    def try_calc_node(self, node, scope: IdentScope, *vals, **props):
+        return self.node_calc.process_node(node, scope, vals, props)
 
 
 GLOBAL_ANALYSER = RussianLanguageSemanticAnalyser()

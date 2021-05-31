@@ -127,7 +127,7 @@ class LiteralNode(ExpressionNode):
                 pass
 
     def __str__(self) -> str:
-        return f"LiteralNode: {self.literal} (row {self.row} col {self.col})"
+        return f"LiteralNode: {self.literal}"
 
 
 class RusIdentifierNode(ExpressionNode):
@@ -191,7 +191,8 @@ class CallNode(ExpressionNode):
 
 
 class VariableDefinitionNode(StatementNode):
-    def __init__(self, type_: TypeNode, *vars_: Union[RusIdentifierNode, 'AssignNode'], **props):
+    def __init__(self, type_: TypeNode, *vars_: Union[RusIdentifierNode, 'AssignNode', 'ArrayDefinitionNode',
+                                                      'ArrayDefinitionInPlaceNode'], **props):
         super(VariableDefinitionNode, self).__init__(**props)
         self._type = type_
         self._vars = vars_
@@ -204,49 +205,42 @@ class VariableDefinitionNode(StatementNode):
         return self._vars
 
 
-class ArrayIdentAllocateNode(AstNode):
-    def __init__(self, type_: TypeNode, size: Optional[LiteralNode], **props):
-        super(ArrayIdentAllocateNode, self).__init__(**props)
-        self.type = type_
-        self.size = size if size.value else EMPTY_LITERAL
-
-    def __str__(self) -> str:
-        return 'Array allocate info'
-
-    @property
-    def childs(self) -> Tuple[TypeNode, LiteralNode]:
-        return self.type, self.size
-
-
 class ArrayDefinitionInPlaceNode(StatementNode):
-    def __init__(self, type_: TypeNode, ident: ArrayIdentAllocateNode, values: ExpressionListNode = None, **props):
+    def __init__(self, ident: RusIdentifierNode, size: ExpressionNode = None, values: ExpressionListNode = None,
+                 **props):
         super(ArrayDefinitionInPlaceNode, self).__init__(**props)
-        self._type = type_
         self._ident = ident
+        self._size = size if size else LiteralNode(str(len(values)))
         self._vals = values if values else EMPTY_EXPRS
-        if not self._ident.size.value:
-            self._ident.size = LiteralNode(str(self._vals.count))
 
     def __str__(self) -> str:
-        return f"Array of {self._type}"
+        return f"Array {'' if  not isinstance(self._size, LiteralNode) else self._size.value}"
 
     @property
-    def childs(self) -> Tuple[TypeNode, ArrayIdentAllocateNode, ExpressionListNode]:
-        return self._type, self._ident, self._vals
+    def name(self):
+        return self._ident.name
+
+    @property
+    def childs(self) -> Tuple[RusIdentifierNode, ExpressionNode, ExpressionListNode]:
+        return self._ident, self._size, self._vals
 
 
 class ArrayDefinitionNode(StatementNode):
-    def __init__(self, type_: TypeNode, ident: ArrayIdentifierNode, **props):
+    def __init__(self, ident: RusIdentifierNode, size: ExpressionNode, **props):
         super(ArrayDefinitionNode, self).__init__(**props)
-        self._type = type_
+        self._size = size
         self._ident = ident
 
     def __str__(self) -> str:
-        return f"Array of {self._type}"
+        return f"Array size {self._size}"
 
     @property
-    def childs(self) -> Tuple[TypeNode, ArrayIdentifierNode]:
-        return self._type, self._ident
+    def name(self):
+        return self._ident.name
+
+    @property
+    def childs(self) -> Tuple[RusIdentifierNode, ExpressionNode]:
+        return self._ident, self._size
 
 
 class BinaryOperationNode(ExpressionNode):
@@ -432,7 +426,7 @@ def type_convert(expr: ExpressionNode, type_: TypeDesc, comment: Optional[str] =
         return expr
     if (expr.node_type.is_simple and type_.is_simple and
             expr.node_type.base_type in TYPE_CONVERTIBILITY and type_.base_type in TYPE_CONVERTIBILITY[
-        expr.node_type.base_type]):
+                expr.node_type.base_type]):
         return TypeConvertNode(expr, type_)
     else:
         raise SemanticException('Тип {0}{2} не конвертируется в {1}'.format(

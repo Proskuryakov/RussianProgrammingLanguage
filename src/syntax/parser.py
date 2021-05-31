@@ -110,21 +110,20 @@ class RussianLanguageCodeSyntaxAnalyser:
         simple_assign = (identifier + ASSIGN_OPERATOR.suppress() + expression).setName('assign')
         self._register_rule_as("assign", simple_assign)
 
-        var_inner = simple_assign | rus_identifier
+
+        array_definition_in_place = rus_identifier + LBRACK + (expression | pp.Group(pp.empty)) + RBRACK + ASSIGN_OPERATOR.suppress() + LBRACE + expression_list + RBRACE
+        self._register_rule_as(nameof(array_definition_in_place), array_definition_in_place)
+
+        array_definition = rus_identifier + LBRACK + (expression | pp.Group(pp.empty)) + RBRACK
+        self._register_rule_as(nameof(array_definition), array_definition)
+
+        var_inner = array_definition_in_place | array_definition | simple_assign | rus_identifier
         variable_definition = type_ + var_inner + pp.ZeroOrMore(COMMA + var_inner)
         self._register_rule_as(nameof(variable_definition), variable_definition)
 
         assign = identifier + ASSIGN_OPERATOR.suppress() + expression
         self._register_rule_as(nameof(assign), assign)
 
-        array_ident_allocate = rus_identifier + LBRACK + (literal | pp.Group(pp.empty)) + RBRACK
-        self._register_rule_as(nameof(array_ident_allocate), array_ident_allocate)
-
-        array_definition_in_place = type_ + array_ident_allocate + ASSIGN_OPERATOR.suppress() + LBRACE + expression_list + RBRACE
-        self._register_rule_as(nameof(array_definition_in_place), array_definition_in_place)
-
-        array_definition = type_ + array_ident_allocate
-        self._register_rule_as(nameof(array_definition), array_definition)
 
         block = LBRACE + statement_list + RBRACE
 
