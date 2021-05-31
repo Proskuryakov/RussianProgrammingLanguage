@@ -33,7 +33,7 @@ class AssignNodeHandler(AstNodeSemanticHandler):
     def __init__(self):
         super().__init__(AssignNode)
 
-    def check_semantic(self, node, scope: IdentScope, *vals, **props):
+    def check_semantic(self, node: AssignNode, scope: IdentScope, *vals, **props):
         self.semantic_checker.process_node(node.var, scope)
         try:
             node.val = LiteralNode(str(self.semantic_checker.try_calc_node(node.val, scope)))
@@ -41,7 +41,10 @@ class AssignNodeHandler(AstNodeSemanticHandler):
             pass
         self.semantic_checker.process_node(node.val, scope)
         node.val = type_convert(node.val, node.var.node_type, 'присваиваемое значение')
-        self.node_type = node.var.node_type
+        node.node_type = node.var.node_type
+        ident = scope.get_ident(node.var.name)
+        node.node_ident = ident if ident else EMPTY_IDENT
+
 
 
 class StatementListNodeHandler(AstNodeSemanticHandler):

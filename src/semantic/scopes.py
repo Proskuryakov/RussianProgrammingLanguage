@@ -16,6 +16,7 @@ class IdentScope:
         self.parent = parent
         self.var_index = 0
         self.param_index = 0
+        self.byte_op_index = 0
 
     @property
     def is_global(self) -> bool:
@@ -81,6 +82,7 @@ class IdentScope:
 
 BUILT_IN_OBJECTS = '''
     пустота вывод(строка стр){}
+    пустота вывод_целый(целый зн){}
 '''
 
 def prepare_global_scope(semantic_check) -> IdentScope:

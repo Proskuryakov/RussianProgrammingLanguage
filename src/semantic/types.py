@@ -37,6 +37,10 @@ class TypeDesc:
     def is_simple(self) -> bool:
         return not self.func
 
+    @property
+    def string(self):
+        return str(self)
+
     def __eq__(self, other: 'TypeDesc'):
         if self.func != other.func:
             return False
