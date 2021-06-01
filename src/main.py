@@ -3,6 +3,7 @@ import os
 from pyparsing import unicode
 
 from src.code.generation.msil.msil_gen import RussianLanguageMSILGenerator
+from src.code_compile import compile_code, run_exe
 from src.semantic import scopes
 import src.semantic.node_handlers as semantic_an
 from src.semantic.scopes import SemanticException
@@ -47,6 +48,9 @@ if __name__ == '__main__':
 
         asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, before_main)
         print(asbl)
+        exe = compile_code(asbl, "../output/main.ilasm")
+        print("Run code result...")
+        print(run_exe(exe))
 
     except SemanticException as e:
         print('Ошибка: {}'.format(e.message))
