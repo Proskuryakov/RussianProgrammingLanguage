@@ -89,7 +89,7 @@ def prepare_global_scope(semantic_check) -> IdentScope:
     from src.syntax.parser import global_parser
     prog = global_parser.parse_string(BUILT_IN_OBJECTS)
     scope = IdentScope()
-    semantic_check.process_node(prog, scope)
+    semantic_check.process_node(prog, scope, disable_hard_check=True)
     for name, ident in scope.idents.items():
         ident.built_in = True
     scope.var_index = 0
