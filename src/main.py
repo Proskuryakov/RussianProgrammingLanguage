@@ -6,6 +6,7 @@ from src.code.generation.msil.msil_gen import RussianLanguageMSILGenerator
 from src.semantic import scopes
 import src.semantic.node_handlers as semantic_an
 from src.semantic.scopes import SemanticException
+from src.syntax.ast_tree import FunctionDefinitionNode
 from src.syntax.parser import RussianLanguageCodeSyntaxAnalyser
 
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     print('semantic_check:')
     try:
         scope = scopes.prepare_global_scope(semantic_analyser)
-        semantic_analyser.process_node(prog, scope)
+        semantic_analyser.process_node(prog, scope, disable_hard_check=False)
 
         main = scope.get_ident("главный")
 
@@ -34,10 +35,18 @@ if __name__ == '__main__':
         print(*prog.tree, sep=os.linesep)
 
         code_gen = RussianLanguageMSILGenerator()
-        main_code = code_gen.gen_code_for_node(main.node, main.node.inner_scope)
-        asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, "")
+        main_code = code_gen.gen_code_for_node(main.node, scope)
+
+        before_main = ""
+
+        for stmt in prog.exprs:
+            if isinstance(stmt, FunctionDefinitionNode) and stmt.name.name == 'главный':
+                pass
+            else:
+                before_main += code_gen.gen_code_for_node(stmt, scope)
+
+        asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, before_main)
         print(asbl)
-        print(main_code)
 
     except SemanticException as e:
         print('Ошибка: {}'.format(e.message))

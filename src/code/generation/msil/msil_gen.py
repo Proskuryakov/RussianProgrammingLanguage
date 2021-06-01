@@ -7,7 +7,7 @@ from src.semantic.scopes_include import ScopeType
 from src.semantic.types import TypeDesc
 from src.syntax.ast_tree import VariableDefinitionNode, AssignNode, LiteralNode, StatementListNode, StatementNode, \
     ExpressionNode, BinaryOperationNode, RusIdentifierNode, CallNode, ParamNode, ExpressionListNode, \
-    FunctionDefinitionNode
+    FunctionDefinitionNode, ReturnNode
 from src.syntax.types import BinOp
 
 msil_types_init = {TypeDesc.INT.string: 'int32', TypeDesc.VOID.string: "void"}
@@ -33,8 +33,6 @@ class StatementListNodeCodeGen(NodeCodeGenerator):
         for stmt in node.exprs:
             str_code += self.code_generator.gen_code_for_node(stmt, scope)
             str_code += "\n"
-
-        str_code += f"\tIL_%0.4X: ret" % scope.byte_op_index
         return str_code
 
 
@@ -69,7 +67,11 @@ class CallNodeCodeGen(NodeCodeGenerator):
             str_code += f"\tIL_%0.4X: call {msil_types_init[node.node_type.string]} " \
                         f"{msil_built_in_fuctions[node.func.node_ident.name]}({','.join(params_types)})" % scope.byte_op_index
             scope.byte_op_index += 4 + len(params_types)
-
+        else:
+            ident = scope.get_ident(node.func.name)
+            str_code += f"\tIL_%0.4X: call {msil_types_init[node.node_type.string]} " \
+                        f"Main::func_{ident.index}({','.join(params_types)})" % scope.byte_op_index
+            scope.byte_op_index += 4 + len(params_types)
         return str_code
 
 
@@ -78,7 +80,12 @@ class RusIdentifierNodeCodeGen(NodeCodeGenerator):
         super(RusIdentifierNodeCodeGen, self).__init__(RusIdentifierNode)
 
     def gen_code(self, node: RusIdentifierNode, scope: IdentScope, *args, **kwargs):
-        str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
+        if node.node_ident.scope != ScopeType.PARAM:
+            str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
+            scope.byte_op_index += 2
+        else:
+            str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
+            scope.byte_op_index += 2
         scope.byte_op_index += 2
         return str_code
 
@@ -88,6 +95,10 @@ class LiteralNodeCodeGen(NodeCodeGenerator):
         super(LiteralNodeCodeGen, self).__init__(LiteralNode)
 
     def gen_code(self, node: LiteralNode, scope: IdentScope, *args, **kwargs):
+
+        if not node.literal:
+            return ""
+
         if node.node_type == TypeDesc.INT:
             str_code = f"\tIL_%0.4X: ldc.i4.s {node.value}" % scope.byte_op_index
             scope.byte_op_index += 2
@@ -128,13 +139,61 @@ class BinOpNodeCodeGen(NodeCodeGenerator):
         return str_code
 
 
+class ReturnNodeCodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(ReturnNodeCodeGen, self).__init__(ReturnNode)
+
+    def gen_code(self, node: ReturnNode, scope: IdentScope, *args, **kwargs):
+        str_code = ""
+
+        str_code += self.code_generator.gen_code_for_node(node.expr, scope) + "\n"
+        str_code += f"\tIL_%0.4X: ret" % scope.byte_op_index
+        scope.byte_op_index += 1
+
+        return str_code
+
+
 class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
     def __init__(self):
         super(FunctionDefinitionNodeCodeGen, self).__init__(FunctionDefinitionNode)
 
     def gen_code(self, node: FunctionDefinitionNode, scope: IdentScope, *args, **kwargs):
+        params = []
+
+        for p in node.params.params:
+            params.append(f"{msil_types_init[p.name.node_type.string]} p_{p.name.node_ident.index}")
+
+
+        locals_str = ""
+
+        vars_l = len([i for _, i in node.body.inner_scope.idents.items() if i.scope == ScopeType.LOCAL])
+
+        if vars_l > 0:
+
+            locals_str = \
+        f"""
+        .locals
+        init
+        (
+            {self.code_generator.get_static_func_locals(node.body.inner_scope)}
+        )"""
+
         if node.name.name == 'главный':
-            return self.code_generator.gen_code_for_node(node.body, scope)
+            func_name = "Main"
+        else:
+            func_name = f"func_{node.name.node_ident.index}"
+        body_code = self.code_generator.gen_code_for_node(node.body, node.body.inner_scope)
+        str_code = \
+            f""".method public hidebysig static {msil_types_init[node.name.node_type.return_type.string]} {func_name}({", ".join(params)}) cil managed
+  {{
+    {".entrypoint" if func_name == "Main" else ""}
+    {locals_str}
+    
+{body_code}
+
+  }} // end of method
+"""
+        return str_code
 
 
 code_gens = []
@@ -153,7 +212,7 @@ class RussianLanguageMSILGenerator(RussianLanguageCodeGenerator):
     def get_static_func_locals(self, vars: IdentScope):
         locals_vars_str = []
         for name, desc in vars.idents.items():
-            if not desc.type.func:
+            if not desc.type.func and desc.scope in [ScopeType.GLOBAL, ScopeType.LOCAL]:
                 locals_vars_str.append(f"\t[{desc.index}] {msil_types_init[desc.type.string]} val_{desc.index}")
         return ",\n".join(locals_vars_str)
 
@@ -175,17 +234,10 @@ class RussianLanguageMSILGenerator(RussianLanguageCodeGenerator):
 .class public auto ansi beforefieldinit {name.capitalize()}
        extends [mscorlib]System.Object
 {{
-  .method public hidebysig static void  Main() cil managed
-  {{
-    .entrypoint
-    .locals init 
-    (
-{self.get_static_func_locals(main_scope)}
-    )
-    
-{main_code}
 
-  }} // end of method Simple::Main
+  {before_main_code}
+    
+  {main_code}
 
   .method public hidebysig specialname rtspecialname 
           instance void  .ctor() cil managed
