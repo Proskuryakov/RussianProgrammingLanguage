@@ -34,8 +34,8 @@ if __name__ == '__main__':
         print(*prog.tree, sep=os.linesep)
 
         code_gen = RussianLanguageMSILGenerator()
-        main_code = code_gen.gen_code_for_node(prog, scope)
-        asbl = code_gen.gen_main_class("main", scope, main_code, "")
+        main_code = code_gen.gen_code_for_node(main.node, main.node.inner_scope)
+        asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, "")
         print(asbl)
         print(main_code)
 

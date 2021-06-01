@@ -6,7 +6,8 @@ from src.semantic.scopes import IdentScope
 from src.semantic.scopes_include import ScopeType
 from src.semantic.types import TypeDesc
 from src.syntax.ast_tree import VariableDefinitionNode, AssignNode, LiteralNode, StatementListNode, StatementNode, \
-    ExpressionNode, BinaryOperationNode, RusIdentifierNode, CallNode, ParamNode, ExpressionListNode
+    ExpressionNode, BinaryOperationNode, RusIdentifierNode, CallNode, ParamNode, ExpressionListNode, \
+    FunctionDefinitionNode
 from src.syntax.types import BinOp
 
 msil_types_init = {TypeDesc.INT.string: 'int32', TypeDesc.VOID.string: "void"}
@@ -19,7 +20,8 @@ msil_operators = {
     }
 }
 
-msil_built_in_fuctions = {"вывод": "[mscorlib]System.Console::WriteLine", "вывод_целый": "[mscorlib]System.Console::WriteLine"}
+msil_built_in_fuctions = {"вывод": "[mscorlib]System.Console::WriteLine",
+                          "вывод_целый": "[mscorlib]System.Console::WriteLine"}
 
 
 class StatementListNodeCodeGen(NodeCodeGenerator):
@@ -32,7 +34,7 @@ class StatementListNodeCodeGen(NodeCodeGenerator):
             str_code += self.code_generator.gen_code_for_node(stmt, scope)
             str_code += "\n"
 
-        str_code +=  f"\tIL_%0.4X: ret" % scope.byte_op_index
+        str_code += f"\tIL_%0.4X: ret" % scope.byte_op_index
         return str_code
 
 
@@ -69,7 +71,6 @@ class CallNodeCodeGen(NodeCodeGenerator):
             scope.byte_op_index += 4 + len(params_types)
 
         return str_code
-
 
 
 class RusIdentifierNodeCodeGen(NodeCodeGenerator):
@@ -127,6 +128,15 @@ class BinOpNodeCodeGen(NodeCodeGenerator):
         return str_code
 
 
+class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(FunctionDefinitionNodeCodeGen, self).__init__(FunctionDefinitionNode)
+
+    def gen_code(self, node: FunctionDefinitionNode, scope: IdentScope, *args, **kwargs):
+        if node.name.name == 'главный':
+            return self.code_generator.gen_code_for_node(node.body, scope)
+
+
 code_gens = []
 
 for name, obj in inspect.getmembers(sys.modules[__name__]):
@@ -143,7 +153,7 @@ class RussianLanguageMSILGenerator(RussianLanguageCodeGenerator):
     def get_static_func_locals(self, vars: IdentScope):
         locals_vars_str = []
         for name, desc in vars.idents.items():
-            if not desc.type.func and desc.scope == ScopeType.GLOBAL:
+            if not desc.type.func:
                 locals_vars_str.append(f"\t[{desc.index}] {msil_types_init[desc.type.string]} val_{desc.index}")
         return ",\n".join(locals_vars_str)
 
