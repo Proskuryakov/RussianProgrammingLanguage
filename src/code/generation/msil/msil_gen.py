@@ -96,18 +96,32 @@ class RusIdentifierNodeCodeGen(NodeCodeGenerator):
 
     def gen_code(self, node: RusIdentifierNode, scope: IdentScope, *args, **kwargs):
         str_code = ""
-        if node.node_ident.scope != ScopeType.PARAM:
-            if node.node_type == TypeDesc.INT:
-                str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
-            elif node.node_type == TypeDesc.FLOAT:
-                str_code = f"\tIL_%0.4X: ldloc.s val_{node.node_ident.index}" % scope.byte_op_index
-            scope.byte_op_index += 2
+        if 'stloc' in kwargs and kwargs['stloc']:
+            if node.node_ident.scope != ScopeType.PARAM:
+                if node.node_type == TypeDesc.INT:
+                    str_code = f"\tIL_%0.4X: stloc.s {node.node_ident.index}" % scope.byte_op_index
+                elif node.node_type == TypeDesc.FLOAT:
+                    str_code = f"\tIL_%0.4X: stloc.s val_{node.node_ident.index}" % scope.byte_op_index
+                scope.byte_op_index += 2
+            else:
+                if node.node_type == TypeDesc.INT:
+                    str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
+                elif node.node_type == TypeDesc.FLOAT:
+                    str_code = f"\tIL_%0.4X: ldarg.s p_{node.node_ident.index}" % scope.byte_op_index
+                scope.byte_op_index += 2
         else:
-            if node.node_type == TypeDesc.INT:
-                str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
-            elif node.node_type == TypeDesc.FLOAT:
-                str_code = f"\tIL_%0.4X: ldarg.s p_{node.node_ident.index}" % scope.byte_op_index
-            scope.byte_op_index += 2
+            if node.node_ident.scope != ScopeType.PARAM:
+                if node.node_type == TypeDesc.INT:
+                    str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
+                elif node.node_type == TypeDesc.FLOAT:
+                    str_code = f"\tIL_%0.4X: ldloc.s val_{node.node_ident.index}" % scope.byte_op_index
+                scope.byte_op_index += 2
+            else:
+                if node.node_type == TypeDesc.INT:
+                    str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
+                elif node.node_type == TypeDesc.FLOAT:
+                    str_code = f"\tIL_%0.4X: ldarg.s p_{node.node_ident.index}" % scope.byte_op_index
+                scope.byte_op_index += 2
         return str_code
 
 
@@ -137,8 +151,9 @@ class AssignNodeCodeGen(NodeCodeGenerator):
 
     def gen_code(self, node: AssignNode, scope: IdentScope, *args, **kwargs):
         str_code = ""
-        str_code += self.code_generator.gen_code_for_node(node.var, scope, *args, **kwargs) + "\n"
-        str_code += self.code_generator.gen_code_for_node(node.val, scope, *args, **kwargs)
+        str_code += self.code_generator.gen_code_for_node(node.val, scope, *args, **kwargs) + "\n"
+        kwargs['stloc'] = True
+        str_code += self.code_generator.gen_code_for_node(node.var, scope, *args, **kwargs)
         return str_code
 
 class VarNodeMSILCodeGen(NodeCodeGenerator):
