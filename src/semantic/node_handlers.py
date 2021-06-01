@@ -56,7 +56,7 @@ class StatementListNodeHandler(AstNodeSemanticHandler):
             scope = IdentScope(scope)
             node.inner_scope = scope
         for expr in node.exprs:
-            get_global_semantic_analyser().process_node(expr, scope)
+            get_global_semantic_analyser().process_node(expr, scope, *vals, **props)
         self.node_type = TypeDesc.VOID
 
 
@@ -70,6 +70,7 @@ class RusIdentifierNodeHandler(AstNodeSemanticHandler):
             raise SemanticException(f'Идентификатор \'{node.name}\' не найден', node.row, node.col)
         node.node_type = ident.type
         node.node_ident = ident
+        node.inner_scope = scope
 
 
 class ArrayIdentifierNodeHandler(AstNodeSemanticHandler):
@@ -113,6 +114,8 @@ class LiteralNodeHandler(AstNodeSemanticHandler):
         super().__init__(LiteralNode)
 
     def check_semantic(self, node: LiteralNode, scope: IdentScope, *vals, **props):
+        if not node.literal:
+            return
         if isinstance(node.value, bool):
             node.node_type = TypeDesc.BOOL
         # проверка должна быть позже bool, т.к. bool наследник от int
@@ -291,7 +294,21 @@ class ExpressionNodeListHandler(AstNodeSemanticHandler):
     def check_semantic(self, node: ExpressionListNode, scope: IdentScope, *vals, **props):
         for item in node.exprs:
             self.semantic_checker.process_node(item, scope)
+        node.inner_scope = scope
 
+
+class ReturnNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super(ReturnNodeHandler, self).__init__(ReturnNode)
+
+    def check_semantic(self, node: ReturnNode, scope: IdentScope, *vals, **props):
+        node.node_type = TypeDesc.VOID
+        self.semantic_checker.process_node(node.expr, IdentScope(scope))
+        func = scope.curr_func
+        if func is None:
+            SemanticException('Оператор return применим только к функции', node.row, node.col)
+        node.expr = type_convert(node.expr, func.func.type.return_type, 'возвращаемое значение')
+        node.inner_scope = scope
 
 class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
     def __init__(self):
@@ -325,8 +342,17 @@ class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
             raise SemanticException("Повторное объявление функции {}".format(node.name.name), node.row, node.col)
         self.semantic_checker.process_node(node.body, scope)
         node.node_type = TypeDesc.VOID
-        node.inner_scope = node.body.inner_scope
+        node.inner_scope = scope
 
+        if 'disable_hard_check' in props and not props['disable_hard_check']:
+            if type_.return_type == TypeDesc.VOID:
+                if isinstance(node.body, StatementListNode):
+                    if not isinstance(node.body.exprs[-1], ReturnNode):
+                        node.body.exprs = (*node.body.exprs, ReturnNode(EMPTY_LITERAL))
+            else:
+                if isinstance(node.body, StatementListNode):
+                    if not isinstance(node.body.exprs[-1], ReturnNode):
+                        raise SemanticException("Возвращаемое значение функции не пустота, но ничего не возвращается")
 
 
 class ParamNodeHandler(AstNodeSemanticHandler):
@@ -336,8 +362,9 @@ class ParamNodeHandler(AstNodeSemanticHandler):
     def check_semantic(self, node, scope: IdentScope, *vals, **props):
         self.semantic_checker.process_node(node.type, scope)
         node.name.node_type = node.type.type
+        func_scope = scope.curr_func
         try:
-            node.name.node_ident = scope.add_ident(IdentDesc(node.name.name, node.type.type, ScopeType.PARAM))
+            node.name.node_ident = func_scope.add_ident(IdentDesc(node.name.name, node.type.type, ScopeType.PARAM))
         except SemanticException:
             raise SemanticException('Параметр {} уже объявлен'.format(node.name.name), node.row, node.col)
         node.node_type = TypeDesc.VOID

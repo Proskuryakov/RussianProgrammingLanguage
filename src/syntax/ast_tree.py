@@ -21,6 +21,7 @@ class AstNode(ABC):
             AstNode.init_action(self)
         self.node_type = None
         self.node_ident = None
+        self.inner_scope = None
 
     @property
     def childs(self) -> Tuple['AstNode', ...]:
