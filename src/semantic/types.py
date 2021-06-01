@@ -8,7 +8,7 @@ from src.syntax.types import BinOp
 class BaseType(Enum):
     VOID = 'пустота'
     INT = 'целый'
-    FLOAT = 'вещественный'
+    FLOAT = 'вещ'
     BOOL = 'логический'
     STR = 'строка'
 

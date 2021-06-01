@@ -83,6 +83,7 @@ class IdentScope:
 BUILT_IN_OBJECTS = '''
     пустота вывод(строка стр){}
     пустота вывод_целый(целый зн){}
+    пустота вывод_вещ(вещ зн){}
 '''
 
 def prepare_global_scope(semantic_check) -> IdentScope:

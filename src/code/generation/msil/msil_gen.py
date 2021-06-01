@@ -7,21 +7,36 @@ from src.semantic.scopes_include import ScopeType
 from src.semantic.types import TypeDesc
 from src.syntax.ast_tree import VariableDefinitionNode, AssignNode, LiteralNode, StatementListNode, StatementNode, \
     ExpressionNode, BinaryOperationNode, RusIdentifierNode, CallNode, ParamNode, ExpressionListNode, \
-    FunctionDefinitionNode, ReturnNode
+    FunctionDefinitionNode, ReturnNode, TypeConvertNode
 from src.syntax.types import BinOp
 
-msil_types_init = {TypeDesc.INT.string: 'int32', TypeDesc.VOID.string: "void"}
+msil_types_init = {TypeDesc.INT.string: 'int32', TypeDesc.VOID.string: "void", TypeDesc.FLOAT.string: "float64"}
 
-msil_stloc_types = {TypeDesc.INT.string: 'i4'}
+msil_stloc_types = {TypeDesc.INT.string: 'i4', TypeDesc.FLOAT.string: 'r8'}
 
 msil_operators = {
     BinOp.ADD: {
-        TypeDesc.INT.string: 'add'
+        TypeDesc.INT.string: 'add',
+        TypeDesc.FLOAT.string: 'add'
+    },
+    BinOp.SUB: {
+        TypeDesc.INT.string: 'sub',
+        TypeDesc.FLOAT.string: 'sub',
+    },
+    BinOp.MUL: {
+        TypeDesc.INT.string: 'mul',
+        TypeDesc.FLOAT.string: 'mul'
+    },
+    BinOp.DIV: {
+        TypeDesc.INT.string: 'div',
+        TypeDesc.FLOAT.string: 'div'
     }
+
 }
 
 msil_built_in_fuctions = {"вывод": "[mscorlib]System.Console::WriteLine",
-                          "вывод_целый": "[mscorlib]System.Console::WriteLine"}
+                          "вывод_целый": "[mscorlib]System.Console::WriteLine",
+                          "вывод_вещ": "[mscorlib]System.Console::WriteLine"}
 
 
 class StatementListNodeCodeGen(NodeCodeGenerator):
@@ -80,13 +95,19 @@ class RusIdentifierNodeCodeGen(NodeCodeGenerator):
         super(RusIdentifierNodeCodeGen, self).__init__(RusIdentifierNode)
 
     def gen_code(self, node: RusIdentifierNode, scope: IdentScope, *args, **kwargs):
+        str_code = ""
         if node.node_ident.scope != ScopeType.PARAM:
-            str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
+            if node.node_type == TypeDesc.INT:
+                str_code = f"\tIL_%0.4X: ldloc.s {node.node_ident.index}" % scope.byte_op_index
+            elif node.node_type == TypeDesc.FLOAT:
+                str_code = f"\tIL_%0.4X: ldloc.s val_{node.node_ident.index}" % scope.byte_op_index
             scope.byte_op_index += 2
         else:
-            str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
+            if node.node_type == TypeDesc.INT:
+                str_code = f"\tIL_%0.4X: ldarg.s {node.node_ident.index}" % scope.byte_op_index
+            elif node.node_type == TypeDesc.FLOAT:
+                str_code = f"\tIL_%0.4X: ldarg.s p_{node.node_ident.index}" % scope.byte_op_index
             scope.byte_op_index += 2
-        scope.byte_op_index += 2
         return str_code
 
 
@@ -99,11 +120,26 @@ class LiteralNodeCodeGen(NodeCodeGenerator):
         if not node.literal:
             return ""
 
-        if node.node_type == TypeDesc.INT:
-            str_code = f"\tIL_%0.4X: ldc.i4.s {node.value}" % scope.byte_op_index
-            scope.byte_op_index += 2
-            return str_code
+        str_code = ""
 
+        if node.node_type == TypeDesc.INT:
+            str_code = f"\tIL_%0.4X: ldc.{msil_stloc_types[node.node_type.string]}.s {node.value}" % scope.byte_op_index
+            scope.byte_op_index += 2
+        elif node.node_type == TypeDesc.FLOAT:
+            str_code = f"\tIL_%0.4X: ldc.{msil_stloc_types[node.node_type.string]} {node.value}" % scope.byte_op_index
+            scope.byte_op_index += 10
+        return str_code
+
+
+class AssignNodeCodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(AssignNodeCodeGen, self).__init__(AssignNode)
+
+    def gen_code(self, node: AssignNode, scope: IdentScope, *args, **kwargs):
+        str_code = ""
+        str_code += self.code_generator.gen_code_for_node(node.var, scope, *args, **kwargs) + "\n"
+        str_code += self.code_generator.gen_code_for_node(node.val, scope, *args, **kwargs)
+        return str_code
 
 class VarNodeMSILCodeGen(NodeCodeGenerator):
     def __init__(self):
@@ -116,9 +152,27 @@ class VarNodeMSILCodeGen(NodeCodeGenerator):
         for var in node._vars:
             if isinstance(var, AssignNode):
                 str_code += self.code_generator.gen_code_for_node(var.val, scope) + "\n"
-                str_code += f"\tIL_%0.4X: stloc.s {var.node_ident.index}\n" % scope.byte_op_index
+                if var.var.node_type == TypeDesc.INT:
+                    str_code += f"\tIL_%0.4X: stloc.s {var.node_ident.index}\n" % scope.byte_op_index
+                elif var.var.node_type == TypeDesc.FLOAT:
+                    str_code += f"\tIL_%0.4X: stloc.s val_{var.node_ident.index}\n" % scope.byte_op_index
                 scope.byte_op_index += 2
         return str_code[:-1]
+
+
+class TypeConvertNodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(TypeConvertNodeGen, self).__init__(TypeConvertNode)
+
+    def gen_code(self, node: TypeConvertNode, scope: IdentScope, *args, **kwargs):
+        str_code = ""
+
+        str_code += self.code_generator.gen_code_for_node(node.expr, scope, *args, **kwargs) + "\n"
+
+        str_code += f"\tIL_%0.4X: conv.{msil_stloc_types[node.node_type.string]}"  % scope.byte_op_index
+        scope.byte_op_index += 1
+
+        return str_code
 
 
 class BinOpNodeCodeGen(NodeCodeGenerator):
@@ -163,15 +217,13 @@ class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
         for p in node.params.params:
             params.append(f"{msil_types_init[p.name.node_type.string]} p_{p.name.node_ident.index}")
 
-
         locals_str = ""
 
         vars_l = len([i for _, i in node.body.inner_scope.idents.items() if i.scope == ScopeType.LOCAL])
 
         if vars_l > 0:
-
             locals_str = \
-        f"""
+                f"""
         .locals
         init
         (

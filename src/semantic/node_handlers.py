@@ -198,6 +198,13 @@ class VariableDefinitionNodeHandler(AstNodeSemanticHandler):
         node.node_type = TypeDesc.VOID
 
 
+class TypeConvertNodeHandler(AstNodeSemanticHandler):
+    def __init__(self):
+        super(TypeConvertNodeHandler, self).__init__(TypeConvertNode)
+
+    def check_semantic(self, node, scope: IdentScope, *vals, **props):
+        pass
+
 class BinaryOperationNodeHandler(AstNodeSemanticHandler):
     def __init__(self):
         super().__init__(BinaryOperationNode)
