@@ -28,4 +28,4 @@ class RussianLanguageCodeGenerator:
         gen.code_generator = self
 
     def gen_code_for_node(self, node, scope: IdentScope, *args, **kwargs):
-        return self.handlers.get(type(node), DefaultCodeGen()).gen_code(node, scope, args, kwargs)
+        return self.handlers.get(type(node), DefaultCodeGen()).gen_code(node, scope, *args, **kwargs)
