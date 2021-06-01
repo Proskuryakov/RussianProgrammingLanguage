@@ -162,6 +162,10 @@ class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
         for p in node.params.params:
             params.append(f"{jbc_types_init[p.name.node_type.string]}")
 
+        locals_c = len([i for _, i in node.body.inner_scope.idents.items() if i.scope != ScopeType.PARAM])
+
+        locals_c += len(params)
+
         if node.name.name == 'главный':
             func_name = "main"
             params = ["[Ljava/lang/String;"]
@@ -172,7 +176,7 @@ class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
         str_code = \
             f""".method public static {func_name}({"".join(params)}){jbc_types_init[node.name.node_type.return_type.string]}
     .limit stack 8
-    .limit locals 8
+    .limit locals {locals_c}
 
 {body_code}
 .end method
