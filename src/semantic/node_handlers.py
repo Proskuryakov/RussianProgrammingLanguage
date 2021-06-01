@@ -54,6 +54,7 @@ class StatementListNodeHandler(AstNodeSemanticHandler):
     def check_semantic(self, node, scope: IdentScope, *vals, **props):
         if not node.program:
             scope = IdentScope(scope)
+            node.inner_scope = scope
         for expr in node.exprs:
             get_global_semantic_analyser().process_node(expr, scope)
         self.node_type = TypeDesc.VOID
@@ -315,6 +316,7 @@ class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
 
         type_ = TypeDesc(None, node.type_.type, tuple(params))
         func_ident = IdentDesc(node.name.name, type_)
+        func_ident.node = node
         scope.func = func_ident
         node.name.node_type = type_
         try:
@@ -323,6 +325,8 @@ class FunctionDefinitionNodeHandler(AstNodeSemanticHandler):
             raise SemanticException("Повторное объявление функции {}".format(node.name.name), node.row, node.col)
         self.semantic_checker.process_node(node.body, scope)
         node.node_type = TypeDesc.VOID
+        node.inner_scope = node.body.inner_scope
+
 
 
 class ParamNodeHandler(AstNodeSemanticHandler):

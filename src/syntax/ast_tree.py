@@ -99,6 +99,7 @@ class StatementListNode(AstNode):
         super().__init__(**props)
         self.exprs = exprs
         self.program = False
+        self.inner_scope = None
 
     @property
     def childs(self) -> Tuple[StatementNode]:
@@ -371,6 +372,7 @@ class FunctionDefinitionNode(StatementNode):
         self.name = name
         self.params = params
         self.body = body
+        self.inner_scope = None
 
     def __str__(self) -> str:
         return 'Define func'
