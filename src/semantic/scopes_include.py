@@ -27,6 +27,8 @@ class IdentDesc:
         self.index = index
         self.is_array = False
         self.built_in = False
+        self.node = None
+        self.ident_scope = None
 
     def __str__(self) -> str:
         return '{}, {}, {}'.format(self.type, self.scope, 'built-in' if self.built_in else self.index)
