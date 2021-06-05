@@ -188,10 +188,11 @@ class VariableDefinitionNodeHandler(AstNodeSemanticHandler):
 
     def check_semantic(self, node: VariableDefinitionNode, scope: IdentScope, *vals, **props):
         self.semantic_checker.process_node(node._type, scope)
+        func_scope = scope.curr_func
         for var in node._vars:
             var_node: RusIdentifierNode = var.var if isinstance(var, AssignNode) else var
             try:
-                scope.add_ident(IdentDesc(var_node.name, node._type.type))
+                func_scope.add_ident(IdentDesc(var_node.name, node._type.type))
             except SemanticException as e:
                 raise SemanticException(e.message, var_node.row, var_node.col)
             self.semantic_checker.process_node(var, scope)
