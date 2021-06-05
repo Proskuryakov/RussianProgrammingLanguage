@@ -36,7 +36,7 @@ if __name__ == '__main__':
         print(*prog.tree, sep=os.linesep)
 
         code_gen = RussianLanguageMSILGenerator()
-        main_code = code_gen.gen_code_for_node(main.node, scope)
+        main_code = code_gen.start_gen_code(main.node, scope)
 
         before_main = ""
 
@@ -44,7 +44,7 @@ if __name__ == '__main__':
             if isinstance(stmt, FunctionDefinitionNode) and stmt.name.name == 'главный':
                 pass
             else:
-                before_main += code_gen.gen_code_for_node(stmt, scope)
+                before_main += code_gen.start_gen_code(stmt, scope)
 
         asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, before_main)
         print(asbl)
