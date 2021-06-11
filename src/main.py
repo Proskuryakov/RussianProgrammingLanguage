@@ -17,7 +17,7 @@ if __name__ == '__main__':
     semantic_analyser = semantic_an.get_global_semantic_analyser()
     print()
 
-    with open("../resources/example8.ru", 'r', encoding='utf-8') as code:
+    with open("../resources/example_fib.ru", 'r', encoding='utf-8') as code:
         file_str = unicode(code.read())
 
     prog = parser.parse_string(file_str)

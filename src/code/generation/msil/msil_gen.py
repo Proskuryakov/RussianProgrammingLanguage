@@ -7,10 +7,13 @@ from src.semantic.scopes_include import ScopeType
 from src.semantic.types import TypeDesc
 from src.syntax.ast_tree import VariableDefinitionNode, AssignNode, LiteralNode, StatementListNode, StatementNode, \
     ExpressionNode, BinaryOperationNode, RusIdentifierNode, CallNode, ParamNode, ExpressionListNode, \
-    FunctionDefinitionNode, ReturnNode, TypeConvertNode
-from src.syntax.types import BinOp
+    FunctionDefinitionNode, ReturnNode, TypeConvertNode, IfNode, ForNode
+from src.syntax.types import BinOp, inverse_op
 
-msil_types_init = {TypeDesc.INT.string: 'int32', TypeDesc.VOID.string: "void", TypeDesc.FLOAT.string: "float64"}
+msil_types_init = {TypeDesc.INT.string: 'int32',
+                   TypeDesc.VOID.string: "void",
+                   TypeDesc.FLOAT.string: "float64",
+                   TypeDesc.STR.string: "string"}
 
 msil_stloc_types = {TypeDesc.INT.string: 'i4', TypeDesc.FLOAT.string: 'r8'}
 
@@ -30,11 +33,42 @@ msil_operators = {
     BinOp.DIV: {
         TypeDesc.INT.string: 'div',
         TypeDesc.FLOAT.string: 'div'
+    },
+    BinOp.MORE_E: {
+        TypeDesc.INT.string: 'bge.s',
+        TypeDesc.BOOL.string: 'bge.s',
+        TypeDesc.FLOAT.string: 'bge.s'
+    },
+    BinOp.MORE: {
+        TypeDesc.INT.string: 'bgt.s',
+        TypeDesc.BOOL.string: 'bgt.s',
+        TypeDesc.FLOAT.string: 'bgt.s'
+    },
+    BinOp.LESS_E: {
+        TypeDesc.INT.string: 'ble.s',
+        TypeDesc.BOOL.string: 'ble.s',
+        TypeDesc.FLOAT.string: 'ble.s'
+    },
+    BinOp.LESS: {
+        TypeDesc.INT.string: 'blt.s',
+        TypeDesc.BOOL.string: 'blt.s',
+        TypeDesc.FLOAT.string: 'blt.s'
+    },
+    BinOp.EQ: {
+        TypeDesc.INT.string: 'beq.s',
+        TypeDesc.BOOL.string: 'beq.s',
+        TypeDesc.FLOAT.string: 'beq.s'
+    },
+    BinOp.NOT_EQ: {
+        TypeDesc.INT.string: 'bne.un.s',
+        TypeDesc.BOOL.string: 'bne.un.s',
+        TypeDesc.FLOAT.string: 'bne.un.s'
     }
 
 }
 
-msil_built_in_fuctions = {"вывод": "[mscorlib]System.Console::WriteLine",
+msil_built_in_fuctions = {"вывод": "[mscorlib]System.Console::Write",
+                          "вывод_перенос": "[mscorlib]System.Console::WriteLine",
                           "вывод_целый": "[mscorlib]System.Console::WriteLine",
                           "вывод_вещ": "[mscorlib]System.Console::WriteLine"}
 
@@ -134,6 +168,9 @@ class LiteralNodeCodeGen(NodeCodeGenerator):
             str_code = f"\t{label_provider.get_usual_label()}: ldc.{msil_stloc_types[node.node_type.string]}.s {node.value}"
         elif node.node_type == TypeDesc.FLOAT:
             str_code = f"\t{label_provider.get_usual_label()}: ldc.{msil_stloc_types[node.node_type.string]} {node.value}"
+        elif node.node_type == TypeDesc.STR:
+            str_bytes = [f"%0.2X" % b for b in bytes(node.value, 'utf-8')]
+            str_code = f"\t{label_provider.get_usual_label()}: ldstr bytearray ({' '.join(str_bytes)} )"
         return str_code
 
 
@@ -159,7 +196,8 @@ class VarNodeMSILCodeGen(NodeCodeGenerator):
 
         for var in node._vars:
             if isinstance(var, AssignNode):
-                str_code += self.code_generator.gen_code_for_node(var.val, scope, label_provider, *args, **kwargs) + "\n"
+                str_code += self.code_generator.gen_code_for_node(var.val, scope, label_provider, *args,
+                                                                  **kwargs) + "\n"
                 if var.var.node_type == TypeDesc.INT:
                     str_code += f"\t{label_provider.get_usual_label()}: stloc.s {var.node_ident.index}\n"
                 elif var.var.node_type == TypeDesc.FLOAT:
@@ -194,6 +232,126 @@ class BinOpNodeCodeGen(NodeCodeGenerator):
         op = msil_operators[node.op][node.node_type.string]
 
         str_code += f"\t{label_provider.get_usual_label()}: {op}"
+
+        return str_code
+
+    @staticmethod
+    def logical_expression_resolve(gen: RussianLanguageCodeGenerator,
+                                   node: BinaryOperationNode, scope: IdentScope, label_provider: 'LabelProvider',
+                                   if_false_label: str,
+                                   if_true_label: str,
+                                   *args, **kwargs):
+        str_code = ""
+        if node.op not in [BinOp.LOGICAL_OR, BinOp.LOGICAL_AND]:
+            # in-place resolve
+            if 'negative' not in kwargs or kwargs['negative']:
+                inv_op = inverse_op(node.op)
+                str_code += gen.gen_code_for_node(node.arg1, scope, label_provider, *args, **kwargs) + "\n"
+                str_code += gen.gen_code_for_node(node.arg2, scope, label_provider, *args, **kwargs) + "\n"
+                str_code += f"\t{label_provider.get_usual_label()}: {msil_operators[inv_op][node.node_type.string]}" \
+                            f" {if_false_label}\n"
+                str_code += f"\tbr.s {if_true_label}"
+                return str_code
+            else:
+                str_code += gen.gen_code_for_node(node.arg1, scope, label_provider, *args, **kwargs) + "\n"
+                str_code += gen.gen_code_for_node(node.arg2, scope, label_provider, *args, **kwargs) + "\n"
+                str_code += f"\t{label_provider.get_usual_label()}: {msil_operators[node.op][node.node_type.string]}" \
+                            f" {if_true_label}\n"
+                str_code += f"\tbr.s {if_false_label}"
+                return str_code
+
+        if node.op == BinOp.LOGICAL_OR:
+            second_arg_label = label_provider.get_jump_label()
+            str_code = ""
+            kwargs['negative'] = False
+            str_code += BinOpNodeCodeGen.logical_expression_resolve(gen, node.arg1, scope, label_provider,
+                                                                    second_arg_label,
+                                                                    if_true_label, *args, **kwargs) + "\n"
+            kwargs['negative'] = False
+            str_code += BinOpNodeCodeGen.logical_expression_resolve(gen, node.arg2, scope, label_provider,
+                                                                    if_false_label,
+                                                                    if_true_label, *args, **kwargs)
+        elif node.op == BinOp.LOGICAL_AND:
+            second_arg_label = label_provider.get_jump_label()
+            str_code = ""
+            kwargs['negative'] = False
+            str_code += BinOpNodeCodeGen.logical_expression_resolve(gen, node.arg1, scope, label_provider,
+                                                                    if_false_label,
+                                                                    second_arg_label, *args, **kwargs) + "\n"
+            kwargs['negative'] = False
+            str_code += BinOpNodeCodeGen.logical_expression_resolve(gen, node.arg2, scope, label_provider,
+                                                                    if_false_label,
+                                                                    if_true_label, *args, **kwargs)
+        return str_code
+
+
+class IfNodeCodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(IfNodeCodeGen, self).__init__(IfNode)
+
+    def _gen_if_node(self, node: IfNode, scope: IdentScope, label_provider: 'MSILLabelProvider', *args, **kwargs):
+        if_false_label = label_provider.get_jump_label()
+        if_true_label = label_provider.get_jump_label()
+
+        str_code = ""
+
+        str_code += BinOpNodeCodeGen.logical_expression_resolve(self.code_generator,
+                                                                node.cond, scope, label_provider, if_false_label,
+                                                                if_true_label, *args, **kwargs) + "\n"
+
+        label_provider.push_label(if_true_label)
+        str_code += self.code_generator.gen_code_for_node(node.if_stmt, scope, label_provider, *args, **kwargs) + "\n"
+
+        label_provider.push_label(if_false_label)
+
+        return str_code
+
+    def _gen_if_else_node(self, node: IfNode, scope: IdentScope, label_provider: 'MSILLabelProvider', *args, **kwargs):
+        if_false_label = label_provider.get_jump_label()
+        if_true_label = label_provider.get_jump_label()
+        next_code_label = label_provider.get_jump_label()
+
+        str_code = ""
+
+        str_code += BinOpNodeCodeGen.logical_expression_resolve(self.code_generator,
+                                                                node.cond, scope, label_provider, if_false_label,
+                                                                if_true_label, *args, **kwargs) + "\n"
+
+        label_provider.push_label(if_true_label)
+        str_code += self.code_generator.gen_code_for_node(node.if_stmt, scope, label_provider, *args, **kwargs) + "\n"
+        str_code += f"\t{label_provider.get_usual_label()}: br.s {next_code_label}\n"
+        label_provider.push_label(if_false_label)
+        str_code += self.code_generator.gen_code_for_node(node.else_stmt, scope, label_provider, *args, **kwargs) + "\n"
+        label_provider.push_label(next_code_label)
+
+        return str_code
+
+    def gen_code(self, node: IfNode, scope: IdentScope, label_provider: 'MSILLabelProvider', *args, **kwargs):
+        return self._gen_if_else_node(node, scope, label_provider, *args, **kwargs) if node.else_stmt and len(node.else_stmt.childs) > 0 \
+            else self._gen_if_node(node, scope, label_provider, *args, **kwargs)
+
+
+class ForNodeCodeGen(NodeCodeGenerator):
+    def __init__(self):
+        super(ForNodeCodeGen, self).__init__(ForNode)
+
+    def gen_code(self, node: ForNode, scope: IdentScope, label_provider: 'MSILLabelProvider', *args, **kwargs):
+        check_label = label_provider.get_jump_label()
+        body_label = label_provider.get_jump_label()
+        next_code_label = label_provider.get_jump_label()
+
+        str_code = self.code_generator.gen_code_for_node(node.init, scope, label_provider, *args, **kwargs) + "\n"
+        str_code += f"\tbr.s {check_label}\n"
+
+        label_provider.push_label(body_label)
+        str_code += self.code_generator.gen_code_for_node(node.body, scope, label_provider, *args, **kwargs) + "\n"
+
+        str_code += self.code_generator.gen_code_for_node(node.step, scope, label_provider,  *args, **kwargs) + "\n"
+        label_provider.push_label(check_label)
+        str_code += BinOpNodeCodeGen.logical_expression_resolve(self.code_generator,
+                                                                node.cond, scope, label_provider, next_code_label,
+                                                                body_label)
+        label_provider.push_label(next_code_label)
 
         return str_code
 
@@ -263,6 +421,7 @@ class MSILLabelProvider(LabelProvider):
     def __init__(self):
         super(MSILLabelProvider, self).__init__()
         self.label_counter = 0
+        self.pushed = []
 
     def get_jump_label(self):
         label = f"JP_%0.4X" % self.label_counter
@@ -270,9 +429,14 @@ class MSILLabelProvider(LabelProvider):
         return label
 
     def get_usual_label(self):
+        if len(self.pushed) > 0:
+            return self.pushed.pop()
         label = f"IL_%0.4X" % self.label_counter
         self.label_counter += 1
         return label
+
+    def push_label(self, label: str):
+        self.pushed.append(label)
 
 
 class RussianLanguageMSILGenerator(RussianLanguageCodeGenerator):
