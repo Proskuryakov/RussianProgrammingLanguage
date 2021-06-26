@@ -14,3 +14,11 @@ class BinOp(Enum):
     LESS_E = '<='
     NOT_EQ = '!='
     EQ = '=='
+
+
+inverse = {BinOp.MORE: BinOp.LESS_E, BinOp.MORE_E: BinOp.LESS, BinOp.LESS_E: BinOp.MORE, BinOp.LESS: BinOp.MORE_E,
+           BinOp.EQ: BinOp.NOT_EQ, BinOp.NOT_EQ: BinOp.EQ}
+
+
+def inverse_op(op: BinOp):
+    return inverse[op]
