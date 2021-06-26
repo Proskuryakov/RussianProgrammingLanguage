@@ -8,8 +8,8 @@ from src.syntax.types import BinOp
 class BaseType(Enum):
     VOID = 'пустота'
     INT = 'целый'
-    FLOAT = 'вещественный'
-    BOOL = 'логический'
+    FLOAT = 'вещ'
+    BOOL = 'лог'
     STR = 'строка'
 
     def __str__(self):

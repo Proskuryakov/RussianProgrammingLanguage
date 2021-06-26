@@ -25,6 +25,9 @@ class LabelProvider:
     def get_jump_label(self):
         pass
 
+    def push_label(self,  label: str):
+        pass
+
 
 class RussianLanguageCodeGenerator:
 
@@ -35,6 +38,6 @@ class RussianLanguageCodeGenerator:
         self.handlers[gen.node_type] = gen
         gen.code_generator = self
 
-    def gen_code_for_node(self, node, scope: IdentScope, *args, **kwargs):
-        return self.handlers.get(type(node), DefaultCodeGen()).gen_code(node, scope, *args, **kwargs)
+    def gen_code_for_node(self, node, scope: IdentScope, label_provider: 'LabelProvider',  *args, **kwargs):
+        return self.handlers.get(type(node), DefaultCodeGen()).gen_code(node, scope, label_provider, *args, **kwargs)
 
