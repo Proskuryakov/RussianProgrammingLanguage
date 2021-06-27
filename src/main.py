@@ -3,6 +3,7 @@ import os
 from pyparsing import unicode
 
 from src.code.generation.jbc.jbc_gen import RussianLanguageJBCGenerator
+from src.code_compile import compile_code, run_java
 from src.semantic import scopes
 import src.semantic.node_handlers as semantic_an
 from src.semantic.scopes import SemanticException
@@ -46,7 +47,9 @@ if __name__ == '__main__':
                 before_main += code_gen.start_gen_code(stmt, scope)
 
         asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, before_main)
-        print(asbl)
+        compile_code(asbl, "Main")
+        run_java("Main")
+
     except SemanticException as e:
         print('Ошибка: {}'.format(e.message))
     print()
