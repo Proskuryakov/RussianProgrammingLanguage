@@ -10,7 +10,7 @@ from src.syntax.ast_tree import VariableDefinitionNode, AssignNode, LiteralNode,
     FunctionDefinitionNode, ReturnNode, TypeConvertNode, ForNode, IfNode
 from src.syntax.types import BinOp, inverse_op
 
-jbc_types_init = {TypeDesc.INT.string: 'I', TypeDesc.VOID.string: "V"}
+jbc_types_init = {TypeDesc.INT.string: 'I', TypeDesc.VOID.string: "V", TypeDesc.FLOAT.string: "F"}
 
 jbc_stloc_types = {TypeDesc.INT.string: 'i', TypeDesc.FLOAT.string: "f"}
 
@@ -38,39 +38,41 @@ jbc_operators = {
         TypeDesc.FLOAT.string: 'div'
     },
     BinOp.MORE_E: {
-        TypeDesc.INT.string: 'if_cmpge',
-        TypeDesc.BOOL.string: 'ifge',
+        TypeDesc.INT.string: 'if_icmpge',
+        TypeDesc.BOOL.string: 'if_icmpge',
         TypeDesc.FLOAT.string: 'ifge'
     },
     BinOp.MORE: {
-        TypeDesc.INT.string: 'if_cmpgt',
-        TypeDesc.BOOL.string: 'ifgt',
+        TypeDesc.INT.string: 'if_icmpgt',
+        TypeDesc.BOOL.string: 'if_icmpgt',
         TypeDesc.FLOAT.string: 'ifgt'
     },
     BinOp.LESS_E: {
-        TypeDesc.INT.string: 'if_cmple',
-        TypeDesc.BOOL.string: 'ifle',
+        TypeDesc.INT.string: 'if_icmple',
+        TypeDesc.BOOL.string: 'if_icmple',
         TypeDesc.FLOAT.string: 'ifle'
     },
     BinOp.LESS: {
-        TypeDesc.INT.string: 'if_cmplt',
-        TypeDesc.BOOL.string: 'iflt',
+        TypeDesc.INT.string: 'if_icmplt',
+        TypeDesc.BOOL.string: 'if_icmplt',
         TypeDesc.FLOAT.string: 'iflt'
     },
     BinOp.EQ: {
-        TypeDesc.INT.string: 'if_cmpeq',
-        TypeDesc.BOOL.string: 'ifeq',
+        TypeDesc.INT.string: 'if_icmpeq',
+        TypeDesc.BOOL.string: 'if_icmpeq',
         TypeDesc.FLOAT.string: 'ifeq'
     },
     BinOp.NOT_EQ: {
-        TypeDesc.INT.string: 'if_cmpne',
-        TypeDesc.BOOL.string: 'ifne',
+        TypeDesc.INT.string: 'if_icmpne',
+        TypeDesc.BOOL.string: 'if_icmpne',
         TypeDesc.FLOAT.string: 'ifne'
     }
 }
 
-jbc_built_in_fuctions = {"вывод_целый": "invokevirtual java/io/PrintStream/println(I)V"}
-jbc_built_in_load_func = {"вывод_целый": "getstatic java/lang/System/out Ljava/io/PrintStream;"}
+jbc_built_in_fuctions = {"вывод_целый": "invokevirtual java/io/PrintStream/println(I)V",
+                         "вывод_вещ": "invokevirtual java/io/PrintStream/println(F)V"}
+jbc_built_in_load_func = {"вывод_целый": "getstatic java/lang/System/out Ljava/io/PrintStream;",
+                          "вывод_вещ": "getstatic java/lang/System/out Ljava/io/PrintStream;"}
 
 
 class StatementListNodeCodeGen(NodeCodeGenerator):
@@ -155,9 +157,13 @@ class LiteralNodeCodeGen(NodeCodeGenerator):
         if not node.literal:
             return ""
 
+        str_code = ''
+
         if node.node_type == TypeDesc.INT:
             str_code = f"\t{label_provider.get_usual_label()}: bipush\t\t\t\t{node.value}"
-            return str_code
+        if node.node_type == TypeDesc.FLOAT:
+            str_code = f"\t{label_provider.get_usual_label()}: ldc\t\t\t\t{node.value}"
+        return str_code
 
 
 class AssignNodeCodeGen(NodeCodeGenerator):
@@ -197,6 +203,8 @@ class VarNodeCodeGen(NodeCodeGenerator):
 
         for var in node._vars:
             if isinstance(var, AssignNode):
+                aaa = 4
+                print(aaa)
                 str_code += self.code_generator.gen_code_for_node(var.val, scope, label_provider, *args,
                                                                   **kwargs) + "\n"
                 kwargs['store'] = 'store'
@@ -217,7 +225,7 @@ class BinOpNodeCodeGen(NodeCodeGenerator):
 
         op = jbc_operators[node.op][node.node_type.string]
 
-        str_code += f"\t{label_provider.get_usual_label()}: {op}"
+        str_code += f"\t{label_provider.get_usual_label()}: {jbc_stloc_types[node.node_type.string]}{op}"
 
         return str_code
 
@@ -234,14 +242,22 @@ class BinOpNodeCodeGen(NodeCodeGenerator):
                 inv_op = inverse_op(node.op)
                 str_code += gen.gen_code_for_node(node.arg1, scope, label_provider, *args, **kwargs) + "\n"
                 str_code += gen.gen_code_for_node(node.arg2, scope, label_provider, *args, **kwargs) + "\n"
-                str_code += f"\t{label_provider.get_usual_label()}: {jbc_operators[inv_op][node.node_type.string]}" \
+                op_type = node.arg1.node_type
+                addition = jbc_compare_additions[op_type.string]
+                if addition and addition != "":
+                    str_code += f"\t{label_provider.get_usual_label()}: {addition}\n"
+                str_code += f"\t{label_provider.get_usual_label()}: {jbc_operators[inv_op][op_type.string]}" \
                             f" {if_false_label}\n"
                 str_code += f"\t{label_provider.get_usual_label()}: goto {if_true_label}"
                 return str_code
             else:
                 str_code += gen.gen_code_for_node(node.arg1, scope, label_provider, *args, **kwargs) + "\n"
                 str_code += gen.gen_code_for_node(node.arg2, scope, label_provider, *args, **kwargs) + "\n"
-                str_code += f"\t{label_provider.get_usual_label()}: {jbc_operators[node.op][node.node_type.string]}" \
+                op_type = node.arg1.node_type
+                addition = jbc_compare_additions[op_type.string]
+                if addition and addition != "":
+                    str_code += f"\t{label_provider.get_usual_label()}: {addition}\n"
+                str_code += f"\t{label_provider.get_usual_label()}: {jbc_operators[node.op][op_type.string]}" \
                             f" {if_true_label}\n"
                 str_code += f"\t{label_provider.get_usual_label()}: goto {if_false_label}"
                 return str_code
@@ -335,7 +351,7 @@ class ForNodeCodeGen(NodeCodeGenerator):
         label_provider.push_label(check_label)
         str_code += BinOpNodeCodeGen.logical_expression_resolve(self.code_generator,
                                                                 node.cond, scope, label_provider, next_code_label,
-                                                                body_label)
+                                                                body_label, *args, **kwargs)
         label_provider.push_label(next_code_label)
 
         return str_code
@@ -385,7 +401,7 @@ class FunctionDefinitionNodeCodeGen(NodeCodeGenerator):
         str_code = \
             f""".method public static {func_name}({"".join(params)}){jbc_types_init[node.name.node_type.return_type.string]}
     .limit stack 8
-    .limit locals {locals_c}
+    .limit locals 8
 
 {body_code}
 .end method
