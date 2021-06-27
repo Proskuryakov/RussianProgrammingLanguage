@@ -1,4 +1,5 @@
 import os
+from time import sleep
 
 from pyparsing import unicode
 
@@ -17,7 +18,7 @@ if __name__ == '__main__':
     semantic_analyser = semantic_an.get_global_semantic_analyser()
     print()
 
-    with open("../resources/simple.ru", 'r', encoding='utf-8') as code:
+    with open("../resources/example7", 'r', encoding='utf-8') as code:
         file_str = unicode(code.read())
 
     prog = parser.parse_string(file_str)
@@ -48,6 +49,7 @@ if __name__ == '__main__':
 
         asbl = code_gen.gen_main_class("main", main.node.inner_scope, main_code, before_main)
         compile_code(asbl, "Main")
+        print("Code run result:")
         run_java("Main")
 
     except SemanticException as e:
